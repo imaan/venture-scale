@@ -1,0 +1,11 @@
+# Uploaded pitch decks (may contain confidential info)
+input/*.pdf
+input/*.PDF
+
+# Processed decks
+done/*.pdf
+done/*.PDF
+
+# OS files
+.DS_Store
+Thumbs.db
