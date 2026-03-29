@@ -245,7 +245,8 @@ const data=${dataJson};
 const toggle=document.getElementById('themeToggle');
 function setTheme(t){document.documentElement.setAttribute('data-theme',t);toggle.textContent=t==='dark'?'\\u2600':'\\u263E';localStorage.setItem('theme',t)}
 toggle.onclick=()=>setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
-setTheme(localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
+const paramTheme=new URLSearchParams(window.location.search).get('theme');
+setTheme(paramTheme||localStorage.getItem('theme')||(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
 
 function isActive(s){return s<=currentStage}
 function getStats(){let g=0,a=0,r=0,total=0,excluded=0;const cats=[];data.categories.forEach(cat=>{let cg=0,ca=0,cr=0,ce=0;cat.questions.forEach(q=>{if(isActive(q.stage)){total++;if(q.s==='green'){g++;cg++}else if(q.s==='amber'){a++;ca++}else{r++;cr++}}else{excluded++;ce++}});cats.push({g:cg,a:ca,r:cr,e:ce,total:cg+ca+cr})});return{g,a,r,total,excluded,cats}}
