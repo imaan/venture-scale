@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Venture Scale - GTM Research Playground</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0c;
+    --surface: #141418;
+    --border: #2a2a34;
+    --text: #e8e8ed;
+    --text-dim: #8888a0;
+    --accent: #6ee7b7;
+    --accent-dim: rgba(110, 231, 183, 0.12);
+    --red: #f87171;
+    --red-dim: rgba(248, 113, 113, 0.12);
+    --yellow: #fbbf24;
+    --yellow-dim: rgba(251, 191, 36, 0.12);
+    --blue: #60a5fa;
+    --blue-dim: rgba(96, 165, 250, 0.12);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Layout */
+  .shell { max-width: 960px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  /* Header */
+  .header { margin-bottom: 28px; }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .header h1 span { color: var(--accent); }
+  .header p { color: var(--text-dim); font-size: 13px; margin-top: 2px; }
+
+  /* Tabs */
+  .tab-bar {
+    display: flex; gap: 4px; border-bottom: 1px solid var(--border);
+    margin-bottom: 28px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .tab-btn {
+    background: none; border: none; color: var(--text-dim); font-size: 13px;
+    font-weight: 500; padding: 10px 16px; cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+  }
+  .card h3 { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+  .card p { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+
+  /* Stat row */
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .stat-card .value {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 20px; font-weight: 700; color: var(--accent);
+  }
+  .stat-card .label { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  /* Insight box */
+  .insight-box {
+    background: var(--accent-dim); border: 1px solid rgba(110,231,183,0.2);
+    border-radius: var(--radius); padding: 18px; margin-bottom: 20px;
+  }
+  .insight-box .tag {
+    display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--accent); margin-bottom: 8px;
+  }
+  .insight-box p { font-size: 13px; color: var(--text); line-height: 1.7; }
+
+  .insight-box.yellow {
+    background: var(--yellow-dim); border-color: rgba(251,191,36,0.2);
+  }
+  .insight-box.yellow .tag { color: var(--yellow); }
+
+  .insight-box.blue {
+    background: var(--blue-dim); border-color: rgba(96,165,250,0.2);
+  }
+  .insight-box.blue .tag { color: var(--blue); }
+
+  .bottom-question {
+    text-align: center; padding: 24px 20px; color: var(--text-dim);
+    font-size: 13px; font-style: italic; border-top: 1px solid var(--border);
+    margin-top: 12px;
+  }
+  .bottom-question strong { color: var(--text); font-style: normal; }
+
+  /* Badge */
+  .stage-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; padding: 3px 12px; border-radius: 20px;
+    margin-right: 8px;
+  }
+  .stage-badge.pre-revenue {
+    background: var(--yellow-dim); color: var(--yellow);
+    border: 1px solid rgba(251,191,36,0.25);
+  }
+  .stage-badge.pre-mvp {
+    background: var(--accent-dim); color: var(--accent);
+  }
+
+  /* Positioning grid */
+  .pos-grid {
+    position: relative; width: 100%; aspect-ratio: 16/10;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 20px; overflow: hidden;
+  }
+  .pos-grid .axis-label {
+    position: absolute; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim);
+  }
+  .pos-grid .axis-label.y-top { top: 12px; left: 12px; }
+  .pos-grid .axis-label.y-bot { bottom: 12px; left: 12px; }
+  .pos-grid .axis-label.x-left { bottom: 12px; left: 50%; transform: translateX(-100%); margin-left: -20px; }
+  .pos-grid .axis-label.x-right { bottom: 12px; right: 12px; }
+  .pos-grid .crosshair-h, .pos-grid .crosshair-v {
+    position: absolute; background: var(--border);
+  }
+  .pos-grid .crosshair-h { left: 0; right: 0; top: 50%; height: 1px; }
+  .pos-grid .crosshair-v { top: 0; bottom: 0; left: 50%; width: 1px; }
+  .pos-dot {
+    position: absolute; transform: translate(-50%, -50%);
+    font-size: 11px; font-weight: 600; padding: 4px 10px;
+    border-radius: 20px; white-space: nowrap; cursor: default;
+  }
+  .pos-dot.accent { background: var(--accent); color: #0a0a0c; }
+  .pos-dot.dim { background: rgba(136,136,160,0.2); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* Expandable competitor cards */
+  .comp-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 8px; overflow: hidden;
+  }
+  .comp-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; cursor: pointer; user-select: none;
+  }
+  .comp-header:hover { background: rgba(255,255,255,0.02); }
+  .comp-header .name { font-size: 14px; font-weight: 600; }
+  .comp-header .pricing { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: var(--accent); }
+  .comp-header .chevron {
+    font-size: 12px; color: var(--text-dim); transition: transform 0.2s;
+    margin-left: 12px;
+  }
+  .comp-card.open .comp-header .chevron { transform: rotate(180deg); }
+  .comp-body { padding: 0 18px 16px; display: none; }
+  .comp-card.open .comp-body { display: block; }
+  .comp-body p { font-size: 13px; color: var(--text-dim); line-height: 1.7; margin-bottom: 8px; }
+  .comp-body .gap-tag {
+    display: inline-block; font-size: 11px; font-weight: 600;
+    color: var(--accent); background: var(--accent-dim);
+    padding: 3px 10px; border-radius: 20px;
+  }
+
+  /* Timeline */
+  .timeline { display: flex; flex-direction: column; gap: 0; margin-bottom: 24px; position: relative; }
+  .timeline::before {
+    content: ''; position: absolute; left: 18px; top: 28px; bottom: 28px;
+    width: 2px; background: var(--border);
+  }
+  .phase-card {
+    display: flex; gap: 16px; padding: 16px 0; position: relative;
+  }
+  .phase-dot {
+    flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%;
+    background: var(--accent-dim); border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: var(--accent); z-index: 1;
+  }
+  .phase-info { flex: 1; }
+  .phase-info h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .phase-info .meta { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+  .phase-info p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+  /* Channel table */
+  .ch-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .ch-table th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-dim); padding: 8px 12px;
+    border-bottom: 1px solid var(--border); font-weight: 600;
+  }
+  .ch-table td {
+    padding: 10px 12px; font-size: 13px; border-bottom: 1px solid rgba(42,42,52,0.5);
+  }
+  .ch-table .score {
+    font-family: 'SF Mono', 'Fira Code', monospace; font-weight: 700; color: var(--accent);
+  }
+  .score-bar {
+    display: inline-block; height: 6px; border-radius: 3px; background: var(--accent);
+    vertical-align: middle; margin-left: 8px;
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--surface); border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0; padding: 16px 20px;
+  }
+  .callout .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent); margin-bottom: 6px; }
+  .callout p { font-size: 13px; color: var(--text-dim); line-height: 1.7; }
+
+  /* Checklist */
+  .progress-wrap { margin-bottom: 24px; }
+  .progress-bar-bg {
+    width: 100%; height: 8px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 4px; overflow: hidden;
+  }
+  .progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; border-radius: 4px; }
+  .progress-label { font-size: 12px; color: var(--text-dim); margin-top: 6px; text-align: right; }
+  .progress-label span { color: var(--accent); font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace; }
+
+  .checklist-section { margin-bottom: 24px; }
+  .checklist-section h3 {
+    font-size: 13px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-dim); margin-bottom: 10px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .check-item {
+    display: flex; align-items: flex-start; gap: 10px; padding: 8px 0;
+    cursor: pointer; user-select: none;
+  }
+  .check-item:hover { opacity: 0.85; }
+  .check-box {
+    flex-shrink: 0; width: 18px; height: 18px; border-radius: 4px;
+    border: 2px solid var(--border); display: flex; align-items: center;
+    justify-content: center; transition: all 0.15s; margin-top: 1px;
+  }
+  .check-item.done .check-box { background: var(--accent); border-color: var(--accent); }
+  .check-item.done .check-box::after { content: '\2713'; color: #0a0a0c; font-size: 12px; font-weight: 700; }
+  .check-item.done .check-label { text-decoration: line-through; color: var(--text-dim); }
+  .check-label { font-size: 13px; line-height: 1.5; }
+
+  /* Kill / Go cards */
+  .kg-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .kg-row { grid-template-columns: 1fr; } }
+  .kg-card { border-radius: var(--radius); padding: 20px; }
+  .kg-card.kill { background: var(--red-dim); border: 1px solid rgba(248,113,113,0.25); }
+  .kg-card.go { background: var(--accent-dim); border: 1px solid rgba(110,231,183,0.25); }
+  .kg-card .kg-tag {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
+  }
+  .kg-card.kill .kg-tag { color: var(--red); }
+  .kg-card.go .kg-tag { color: var(--accent); }
+  .kg-card p { font-size: 13px; line-height: 1.7; }
+  .kg-card.kill p { color: #fca5a5; }
+  .kg-card.go p { color: #a7f3d0; }
+
+  /* Pricing table */
+  .price-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .price-table th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-dim); padding: 8px 12px;
+    border-bottom: 1px solid var(--border); font-weight: 600;
+  }
+  .price-table td {
+    padding: 10px 12px; font-size: 13px; border-bottom: 1px solid rgba(42,42,52,0.5);
+  }
+  .price-table td:nth-child(2) {
+    font-family: 'SF Mono', 'Fira Code', monospace; color: var(--accent);
+  }
+
+  /* When to charge */
+  .when-section { margin-bottom: 24px; }
+  .when-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .when-steps { display: flex; flex-direction: column; gap: 8px; }
+  .when-step {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+  }
+  .when-step .num {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent-dim); color: var(--accent); display: flex;
+    align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .when-step p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+  /* Not-now list */
+  .not-now { margin-bottom: 20px; }
+  .not-now h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; color: var(--red); }
+  .not-now-item {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0;
+    font-size: 13px; color: var(--text-dim);
+  }
+  .not-now-item::before {
+    content: '\2717'; color: var(--red); font-weight: 700; font-size: 12px;
+    flex-shrink: 0;
+  }
+  .not-now-item .note { margin-left: 4px; font-style: italic; color: rgba(136,136,160,0.6); }
+
+  /* Section titles */
+  .section-title {
+    font-size: 15px; font-weight: 600; margin-bottom: 16px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+
+  /* Value chain flow */
+  .vc-flow {
+    display: flex; flex-direction: column; gap: 0; margin-bottom: 28px;
+    position: relative;
+  }
+  .vc-flow::before {
+    content: ''; position: absolute; left: 24px; top: 30px; bottom: 30px;
+    width: 2px; background: var(--border);
+  }
+  .vc-layer {
+    display: flex; gap: 16px; padding: 10px 0; position: relative;
+  }
+  .vc-layer-icon {
+    flex-shrink: 0; width: 50px; height: 50px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; z-index: 1;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .vc-layer.highlighted .vc-layer-icon {
+    background: var(--accent); color: #0a0a0c; border-color: var(--accent);
+  }
+  .vc-layer-info { flex: 1; min-width: 0; }
+  .vc-layer-info h4 { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .vc-layer.highlighted .vc-layer-info h4 { color: var(--accent); }
+  .vc-layer-info .vc-meta { font-size: 12px; color: var(--text-dim); margin-bottom: 2px; }
+  .vc-layer-info .vc-examples {
+    font-size: 12px; color: rgba(136,136,160,0.7); font-style: italic;
+  }
+  .vc-layer-info .vc-meta .mono {
+    font-family: 'SF Mono', 'Fira Code', monospace; color: var(--accent); font-weight: 600;
+  }
+
+  /* Value chain comparison table */
+  .vc-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .vc-table th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-dim); padding: 8px 10px;
+    border-bottom: 1px solid var(--border); font-weight: 600;
+  }
+  .vc-table td {
+    padding: 10px 10px; font-size: 12px; border-bottom: 1px solid rgba(42,42,52,0.5);
+    vertical-align: top;
+  }
+  .vc-table tr.highlighted td {
+    background: rgba(110,231,183,0.06);
+  }
+  .vc-table td.mono {
+    font-family: 'SF Mono', 'Fira Code', monospace; color: var(--accent); font-weight: 600;
+  }
+  .vc-table .layer-name { font-weight: 600; font-size: 13px; }
+  .vc-table .lock-in-tag {
+    display: inline-block; font-size: 10px; padding: 2px 8px;
+    border-radius: 10px; font-weight: 600;
+  }
+  .lock-high { background: var(--accent-dim); color: var(--accent); }
+  .lock-med { background: var(--yellow-dim); color: var(--yellow); }
+  .lock-low { background: var(--red-dim); color: var(--red); }
+  .lock-none { background: rgba(136,136,160,0.1); color: var(--text-dim); }
+
+  /* Question cards */
+  .question-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px; margin-bottom: 10px;
+  }
+  .question-card .q-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--yellow); margin-bottom: 6px;
+  }
+  .question-card .q-text { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .question-card .q-context { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+
+  /* Strategic note cards */
+  .strat-note {
+    display: flex; align-items: flex-start; gap: 10px; padding: 10px 0;
+    font-size: 13px; color: var(--text-dim); line-height: 1.6;
+  }
+  .strat-note .strat-bullet {
+    flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); margin-top: 8px;
+  }
+
+  @media (max-width: 700px) {
+    .vc-table { font-size: 11px; }
+    .vc-table th, .vc-table td { padding: 6px 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <div class="header">
+    <h1><span>Venture Scale</span> GTM Research</h1>
+    <p>AI-powered startup evaluation for venture capitalists</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar" role="tablist">
+    <button class="tab-btn active" data-tab="overview" role="tab">Overview</button>
+    <button class="tab-btn" data-tab="market" role="tab">Market</button>
+    <button class="tab-btn" data-tab="valuechain" role="tab">Value Chain</button>
+    <button class="tab-btn" data-tab="competitive" role="tab">Competitors</button>
+    <button class="tab-btn" data-tab="distribution" role="tab">Channels</button>
+    <button class="tab-btn" data-tab="validation" role="tab">Strategy</button>
+    <button class="tab-btn" data-tab="actions" role="tab">Tasks</button>
+  </div>
+
+  <!-- ================= TAB 1: OVERVIEW ================= -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="card" style="margin-bottom: 20px;">
+      <h3 style="color: var(--accent); font-size: 16px;">
+        Venture Scale
+        <span class="stage-badge pre-revenue" style="margin-left: 10px; vertical-align: middle; font-size: 10px;">Stage: Pre-revenue</span>
+      </h3>
+      <p style="margin-bottom: 4px;">
+        <span class="stage-badge pre-mvp" style="font-size: 10px;">Pre-MVP Alpha</span>
+      </p>
+      <p style="margin-top: 10px;">Structured, stage-gated startup analysis that gives VCs a Verified / Quick Win / Gap scorecard for every deck in under 60 seconds.</p>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="value">5-7</div>
+        <div class="label">Investor-facing competitors</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">85%</div>
+        <div class="label">VCs use AI daily</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">3m 20s</div>
+        <div class="label">Avg time per deck</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">$3.1M</div>
+        <div class="label">Raised by DeckMatch</div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <div class="tag">Key Insight</div>
+      <p>No competitor uses a structured checklist with stage-gating and Verified / Quick Win / Gap scoring. The niche is real.</p>
+    </div>
+
+    <div class="insight-box yellow">
+      <div class="tag">Strategic Frame</div>
+      <p>This is a <strong style="color:var(--text);">lead gen tool first, product second.</strong> Success = VC conversations, not revenue. Revenue trigger: feature requests. No feature requests after alpha = let it die naturally.</p>
+    </div>
+
+    <div class="bottom-question">
+      <strong>The single question that matters:</strong> is the analysis output good enough that a VC forwards it to their partner?
+    </div>
+  </div>
+
+  <!-- ================= TAB 2: MARKET ================= -->
+  <div class="tab-panel" id="tab-market">
+    <div class="section-title">Key Market Numbers</div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="value">~3,000</div>
+        <div class="label">Decks per VC firm per year</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">50-200</div>
+        <div class="label">Decks screened per associate/mo</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">5-10 hrs</div>
+        <div class="label">Weekly screening time</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">12.1%</div>
+        <div class="label">Decks "clearly fundable"</div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="value">82%</div>
+        <div class="label">VCs using AI for deal sourcing</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">45m &rarr; 8m</div>
+        <div class="label">AI cuts screening time (Bain)</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">50%</div>
+        <div class="label">Top VCs use Affinity</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">200+</div>
+        <div class="label">Pitch Deck Scanner users</div>
+      </div>
+    </div>
+
+    <div class="insight-box">
+      <div class="tag">Target User</div>
+      <p><strong style="color:var(--text);">The associate/analyst is the real buyer.</strong> They read 50-200 decks/month, spend 5-10 hours/week screening, and flag 5-15 for partner review. Adoption goes bottom-up: associate &rarr; partner &rarr; firm-wide.</p>
+    </div>
+
+    <div class="section-title" style="margin-top: 28px;">Pricing Landscape</div>
+    <table class="price-table">
+      <thead>
+        <tr><th>Tier</th><th>Range</th><th>Examples</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Free tools</td><td>$0</td><td>PitchLeague, OpenVC, SaaStr, Roast My Deck</td></tr>
+        <tr><td>Per-analysis</td><td>$2.49-$49</td><td>InoDash, PitchGrade, VentureLens</td></tr>
+        <tr><td>Subscription</td><td>$30-$100/mo</td><td>Pitch Deck Scanner, PitchBob VC, VentureLens</td></tr>
+        <tr><td>Enterprise</td><td>$25K+/yr</td><td>Harmonic, Affinity, AlphaSense</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <div class="label">Sweet Spot</div>
+      <p>$30-$50/month or ~$10-$20/analysis when ready to charge. But pricing is irrelevant for alpha -- it's free as a relationship tool.</p>
+    </div>
+  </div>
+
+  <!-- ================= TAB 3: VALUE CHAIN ================= -->
+  <div class="tab-panel" id="tab-valuechain">
+    <div class="section-title">VC Tooling Ecosystem: 6 Layers</div>
+    <p style="font-size: 13px; color: var(--text-dim); margin: -8px 0 20px;">How money flows from VC management fees to tool revenue. Venture Scale enters at the per-analysis layer.</p>
+
+    <div class="vc-flow">
+      <div class="vc-layer">
+        <div class="vc-layer-icon">$$$</div>
+        <div class="vc-layer-info">
+          <h4>Enterprise Platforms</h4>
+          <div class="vc-meta"><span class="mono">$12K-$125K/yr</span> &middot; 75-85% gross margin</div>
+          <div class="vc-examples">Affinity, Harmonic, AlphaSense, PitchBook</div>
+        </div>
+      </div>
+      <div class="vc-layer">
+        <div class="vc-layer-icon">$$</div>
+        <div class="vc-layer-info">
+          <h4>Specialized AI Tools</h4>
+          <div class="vc-meta"><span class="mono">$360-$1,200/yr</span> &middot; 60-75% gross margin</div>
+          <div class="vc-examples">Pitch Deck Scanner, VentureLens, DeckMatch</div>
+        </div>
+      </div>
+      <div class="vc-layer highlighted">
+        <div class="vc-layer-icon">VS</div>
+        <div class="vc-layer-info">
+          <h4>Per-Analysis Tools &larr; Venture Scale enters here</h4>
+          <div class="vc-meta"><span class="mono">$50-$500/yr</span> &middot; 70-85% gross margin</div>
+          <div class="vc-examples">InoDash ($2.49/deck), PitchGrade (freemium)</div>
+        </div>
+      </div>
+      <div class="vc-layer">
+        <div class="vc-layer-icon">HR</div>
+        <div class="vc-layer-info">
+          <h4>Human Analysts</h4>
+          <div class="vc-meta"><span class="mono">$80K-$217K/yr</span> salary &middot; $50-$200/hr consultant</div>
+          <div class="vc-examples">VC associates, pitch consultants, outsourced screening</div>
+        </div>
+      </div>
+      <div class="vc-layer">
+        <div class="vc-layer-icon">DIY</div>
+        <div class="vc-layer-info">
+          <h4>DIY (ChatGPT / Claude)</h4>
+          <div class="vc-meta"><span class="mono">$240/yr</span> ($20/mo subscription) &middot; Zero value capture</div>
+          <div class="vc-examples">Freeform analysis, inconsistent quality, existing subscription</div>
+        </div>
+      </div>
+      <div class="vc-layer">
+        <div class="vc-layer-icon">$0</div>
+        <div class="vc-layer-info">
+          <h4>Free Tools</h4>
+          <div class="vc-meta"><span class="mono">$0</span> &middot; Negative margin (subsidized)</div>
+          <div class="vc-examples">PitchLeague, OpenVC, SaaStr.ai</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Layer Comparison</div>
+    <div style="overflow-x: auto;">
+    <table class="vc-table">
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Annual Cost</th>
+          <th>Gross Margin</th>
+          <th>Value Capture</th>
+          <th>Lock-in</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="layer-name">Enterprise Platforms</td>
+          <td class="mono">$12K-$125K</td>
+          <td>75-85%</td>
+          <td>Highest</td>
+          <td><span class="lock-in-tag lock-high">High</span></td>
+        </tr>
+        <tr>
+          <td class="layer-name">Specialized AI</td>
+          <td class="mono">$360-$1.2K</td>
+          <td>60-75%</td>
+          <td>Medium</td>
+          <td><span class="lock-in-tag lock-med">Medium</span></td>
+        </tr>
+        <tr class="highlighted">
+          <td class="layer-name" style="color: var(--accent);">Per-Analysis (VS)</td>
+          <td class="mono">$50-$500</td>
+          <td>70-85%</td>
+          <td>Low</td>
+          <td><span class="lock-in-tag lock-none">None</span></td>
+        </tr>
+        <tr>
+          <td class="layer-name">Human Analysts</td>
+          <td class="mono">$80K-$217K</td>
+          <td>N/A (labor)</td>
+          <td>Highest/unit</td>
+          <td><span class="lock-in-tag lock-high">High</span></td>
+        </tr>
+        <tr>
+          <td class="layer-name">DIY (ChatGPT)</td>
+          <td class="mono">$240</td>
+          <td>N/A</td>
+          <td>Zero</td>
+          <td><span class="lock-in-tag lock-low">Inertia</span></td>
+        </tr>
+        <tr>
+          <td class="layer-name">Free Tools</td>
+          <td class="mono">$0</td>
+          <td>Negative</td>
+          <td>Zero</td>
+          <td><span class="lock-in-tag lock-none">None</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="section-title">Key Insights</div>
+
+    <div class="insight-box yellow" style="margin-bottom: 14px;">
+      <div class="tag">The Real Competitor</div>
+      <p><strong style="color:var(--text);">DIY AI is the real competitor.</strong> With 85% of VCs already using AI daily, the primary alternative is a VC pasting a deck into ChatGPT. The "why not just prompt it?" question is the central competitive threat. Answer: consistency, stage-gating, structured scoring.</p>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="value" style="font-size: 16px;">$0.03-$0.30</div>
+        <div class="label">COGS per analysis (model-dependent)</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" style="font-size: 16px;">66-96%</div>
+        <div class="label">Gross margin at any price point</div>
+      </div>
+      <div class="stat-card">
+        <div class="value" style="font-size: 16px;">$0.08-$0.12</div>
+        <div class="label">Recommended COGS (Sonnet + cache)</div>
+      </div>
+    </div>
+
+    <div class="insight-box blue" style="margin-bottom: 14px;">
+      <div class="tag">Structural Advantage</div>
+      <p>COGS are structurally low because the product is <strong style="color:var(--text);">pure inference</strong> -- no data enrichment, no CRM sync, no proprietary datasets. Margins stay high at almost any price point. The question is entirely about willingness-to-pay, not cost structure.</p>
+    </div>
+
+    <div class="card">
+      <h3>Where Value Concentrates</h3>
+      <p style="margin-bottom: 8px;"><strong style="color:var(--text);">Enterprise platforms own the durable power.</strong> Affinity (50% of top VCs), Harmonic ($30M raised). Once deal flow lives in Affinity, switching costs are enormous.</p>
+      <p style="margin-bottom: 8px;"><strong style="color:var(--text);">Human analysts retain irreplaceable judgment.</strong> $78/hr avg -- a VC analyst spending 5-10 hrs/week on screening = $20K-$40K/yr in labor cost allocated to the exact task VS automates.</p>
+      <p><strong style="color:var(--text);">Venture Scale's entry layer has zero lock-in.</strong> Per-analysis tools are easily substitutable. The framework IP and output consistency are the only defensible moat at this layer.</p>
+    </div>
+  </div>
+
+  <!-- ================= TAB 4: COMPETITORS ================= -->
+  <div class="tab-panel" id="tab-competitive">
+    <div class="section-title">Positioning Grid</div>
+
+    <div class="pos-grid">
+      <span class="axis-label y-top">Investor-Facing</span>
+      <span class="axis-label y-bot">Founder-Facing</span>
+      <span class="axis-label x-left">Shallow</span>
+      <span class="axis-label x-right">Deep Evaluation</span>
+      <div class="crosshair-h"></div>
+      <div class="crosshair-v"></div>
+
+      <!-- Dots: x% from left, y% from top -->
+      <div class="pos-dot accent" style="left:82%; top:18%;">Venture Scale</div>
+      <div class="pos-dot dim" style="left:68%; top:24%;">VentureLens</div>
+      <div class="pos-dot dim" style="left:60%; top:28%;">DeckMatch</div>
+      <div class="pos-dot dim" style="left:38%; top:22%;">Pitch Deck Scanner</div>
+      <div class="pos-dot dim" style="left:72%; top:35%;">Unbiased</div>
+      <div class="pos-dot dim" style="left:30%; top:30%;">PitchBob VC</div>
+      <div class="pos-dot dim" style="left:45%; top:40%;">ChatGPT/Claude</div>
+    </div>
+
+    <div class="section-title" style="margin-top: 28px;">Competitor Breakdown</div>
+
+    <div class="comp-card" data-comp>
+      <div class="comp-header">
+        <div><span class="name">VentureLens</span></div>
+        <div style="display:flex;align-items:center;"><span class="pricing">$49-$90/mo</span><span class="chevron">&#9660;</span></div>
+      </div>
+      <div class="comp-body">
+        <p>Freeform AI risk reports for investors. Generates narrative-style deal memos from pitch decks.</p>
+        <p>No stage-gating, no structured checklist, no Verified/Quick Win/Gap scoring.</p>
+        <span class="gap-tag">Gap: No structured framework</span>
+      </div>
+    </div>
+
+    <div class="comp-card" data-comp>
+      <div class="comp-header">
+        <div><span class="name">DeckMatch / AlphaLens</span></div>
+        <div style="display:flex;align-items:center;"><span class="pricing">$3.1M raised</span><span class="chevron">&#9660;</span></div>
+      </div>
+      <div class="comp-body">
+        <p>Deck extraction and memo generation with CRM integration. Best-funded pure-play competitor. Focuses on data extraction over evaluation quality.</p>
+        <p>Integration-first approach means analysis depth is secondary.</p>
+        <span class="gap-tag">Gap: Extraction-focused, not evaluation-focused</span>
+      </div>
+    </div>
+
+    <div class="comp-card" data-comp>
+      <div class="comp-header">
+        <div><span class="name">Pitch Deck Scanner</span></div>
+        <div style="display:flex;align-items:center;"><span class="pricing">$30-$50/mo</span><span class="chevron">&#9660;</span></div>
+      </div>
+      <div class="comp-body">
+        <p>200+ users. Gmail and Affinity integrations. Quick screening tool for high-volume deal flow.</p>
+        <p>Shallow evaluation -- flags keywords and sections but doesn't assess substance.</p>
+        <span class="gap-tag">Gap: Shallow screening, no depth</span>
+      </div>
+    </div>
+
+    <div class="comp-card" data-comp>
+      <div class="comp-header">
+        <div><span class="name">Unbiased Ventures</span></div>
+        <div style="display:flex;align-items:center;"><span class="pricing">Bundled</span><span class="chevron">&#9660;</span></div>
+      </div>
+      <div class="comp-body">
+        <p>Swiss-based. 7-dimension evaluation framework bundled with founder psychological profiling.</p>
+        <p>Interesting approach but niche. The psych bundling limits standalone adoption for pure deal screening.</p>
+        <span class="gap-tag">Gap: Psych bundling limits deal screening use</span>
+      </div>
+    </div>
+
+    <div class="comp-card" data-comp>
+      <div class="comp-header">
+        <div><span class="name">PitchBob VC</span></div>
+        <div style="display:flex;align-items:center;"><span class="pricing">$30-$100/mo</span><span class="chevron">&#9660;</span></div>
+      </div>
+      <div class="comp-body">
+        <p>WhatsApp and Slack triage. Send a deck link, get a quick take back in your messaging app.</p>
+        <p>Convenience-first, shallow analysis. Good for "should I even open this?" but not serious evaluation.</p>
+        <span class="gap-tag">Gap: Triage only, no depth</span>
+      </div>
+    </div>
+
+    <div class="comp-card" data-comp>
+      <div class="comp-header">
+        <div><span class="name">ChatGPT / Claude</span></div>
+        <div style="display:flex;align-items:center;"><span class="pricing" style="color: var(--yellow);">The Real Competitor</span><span class="chevron">&#9660;</span></div>
+      </div>
+      <div class="comp-body">
+        <p>85% of VCs already use general AI daily for deal evaluation. Upload PDF, ask questions, get analysis. Zero cost, infinite flexibility.</p>
+        <p>The problem: inconsistent output, no framework, no stage-gating, results vary by prompt quality. Every VC reinvents the wheel each time.</p>
+        <span class="gap-tag">Gap: Inconsistent, no framework, no repeatability</span>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top: 20px;">
+      <div class="label">What No Competitor Has</div>
+      <p>1. Stage-gated checklist (Pre-Seed 19q / Seed 34q / Series A+ 45q). 2. Verified / Quick Win / Gap classification. 3. Framework built from real VC conversations (hundreds of analyses, dozens of investors).</p>
+    </div>
+  </div>
+
+  <!-- ================= TAB 5: CHANNELS ================= -->
+  <div class="tab-panel" id="tab-distribution">
+    <div class="section-title">3-Phase Alpha Distribution Plan</div>
+
+    <div class="timeline">
+      <div class="phase-card">
+        <div class="phase-dot">1</div>
+        <div class="phase-info">
+          <h4>Inner Circle</h4>
+          <div class="meta">Week 1-2 &middot; 10-15 VCs</div>
+          <p>Personal DMs to VCs you already know. "I built something -- would you try it on your next deck?" No cold outreach. Only people who will give honest, brutal feedback.</p>
+        </div>
+      </div>
+      <div class="phase-card">
+        <div class="phase-dot">2</div>
+        <div class="phase-info">
+          <h4>Warm Intros</h4>
+          <div class="meta">Week 3-4 &middot; 15-25 more VCs</div>
+          <p>Ask each Phase 1 user: "Know anyone who screens decks?" The ask is easy because they've used the tool. Warm introductions convert at 5-10x cold outreach rates.</p>
+        </div>
+      </div>
+      <div class="phase-card">
+        <div class="phase-dot">3</div>
+        <div class="phase-info">
+          <h4>Community</h4>
+          <div class="meta">Week 5-6 &middot; 20-50 VCs</div>
+          <p>VC Slack communities and X. Now you have usage data and testimonials to share. "I built this" post format. Let the product speak.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Channel Ranking</div>
+    <table class="ch-table">
+      <thead>
+        <tr><th>Channel</th><th>Score</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Direct outreach</td><td class="score">10/10</td><td><span class="score-bar" style="width:100px;"></span></td></tr>
+        <tr><td>Warm intros</td><td class="score">9/10</td><td><span class="score-bar" style="width:90px;"></span></td></tr>
+        <tr><td>X post</td><td class="score">7/10</td><td><span class="score-bar" style="width:70px;"></span></td></tr>
+        <tr><td>VC Slacks</td><td class="score">7/10</td><td><span class="score-bar" style="width:70px;"></span></td></tr>
+        <tr><td>LinkedIn</td><td class="score">6/10</td><td><span class="score-bar" style="width:60px;"></span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <div class="label">Case Study: Granola</div>
+      <p>Chose VCs as beachhead because they love AI, have high willingness to pay, and influential networks. <strong style="color:var(--text);">$0 to $1.5B through word of mouth.</strong> No paid ads. The playbook: give power users a tool so good they can't stop talking about it.</p>
+    </div>
+  </div>
+
+  <!-- ================= TAB 6: STRATEGY ================= -->
+  <div class="tab-panel" id="tab-validation">
+    <div class="section-title">Kill / Go Criteria</div>
+    <div class="kg-row">
+      <div class="kg-card kill">
+        <div class="kg-tag">Kill Signal</div>
+        <p>Nobody uses it after sending to 15 VCs. The form factor is wrong -- go back to discovery. Don't iterate on a product nobody opens.</p>
+      </div>
+      <div class="kg-card go">
+        <div class="kg-tag">Go Signal</div>
+        <p>5+ repeat users analyzing 3+ decks each. Build more features. Batch upload is the first paid feature.</p>
+      </div>
+    </div>
+
+    <div class="section-title">When to Charge</div>
+    <div class="when-section">
+      <div class="when-steps">
+        <div class="when-step">
+          <div class="num">1</div>
+          <p><strong style="color:var(--text);">Free during alpha.</strong> Remove all friction. The goal is learning, not revenue.</p>
+        </div>
+        <div class="when-step">
+          <div class="num">2</div>
+          <p><strong style="color:var(--text);">Ask about payment when feature requests come in.</strong> "Would you pay for batch upload?" tells you if willingness to pay is real.</p>
+        </div>
+        <div class="when-step">
+          <div class="num">3</div>
+          <p><strong style="color:var(--text);">$5/mo start, grandfather early users.</strong> Price up as features are added. Market rate is $30-$50/mo.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top: 28px;">The Strategic Fork (After Alpha)</div>
+    <div class="kg-row">
+      <div class="kg-card go">
+        <div class="kg-tag">Path A: Relationship Opener Works</div>
+        <p>VCs respond, take meetings, some become regular users. Optimize for relationship quality, not revenue. Keep it free or very cheap. The product is a networking tool with a small SaaS revenue stream.</p>
+      </div>
+      <div class="kg-card" style="background: var(--blue-dim); border: 1px solid rgba(96,165,250,0.25);">
+        <div class="kg-tag" style="color: var(--blue);">Path B: Product Is Genuinely Useful</div>
+        <p style="color: #93c5fd;">VCs use it regularly on real deal flow. Associates integrate it into screening workflow. Price at market rates ($30-$50/mo), invest in features (batch, CRM, team), build a real SaaS business.</p>
+      </div>
+    </div>
+
+    <div class="not-now">
+      <h3>What NOT To Do (Yet)</h3>
+      <div class="not-now-item">Batch upload <span class="note">-- first paid feature, not yet</span></div>
+      <div class="not-now-item">Pricing page <span class="note">-- not yet</span></div>
+      <div class="not-now-item">Product Hunt launch <span class="note">-- only when polished</span></div>
+      <div class="not-now-item">CRM integration <span class="note">-- expected eventually, not yet</span></div>
+      <div class="not-now-item">White-label for accelerators <span class="note">-- only if asked</span></div>
+    </div>
+  </div>
+
+  <!-- ================= TAB 7: TASKS ================= -->
+  <div class="tab-panel" id="tab-actions">
+    <div class="progress-wrap">
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-fill" style="width: 0%;"></div>
+      </div>
+      <div class="progress-label"><span id="progress-pct">0%</span> complete</div>
+    </div>
+
+    <div class="checklist-section">
+      <h3>Product (Build the Alpha)</h3>
+      <div class="check-item" data-key="build-webapp">
+        <div class="check-box"></div>
+        <div class="check-label">Build web app (PDF upload &rarr; stage select &rarr; analysis &rarr; shareable output)</div>
+      </div>
+      <div class="check-item" data-key="build-speed">
+        <div class="check-box"></div>
+        <div class="check-label">Analysis in &lt;60 seconds</div>
+      </div>
+      <div class="check-item" data-key="build-share">
+        <div class="check-box"></div>
+        <div class="check-label">Shareable output (clean URL or downloadable HTML)</div>
+      </div>
+      <div class="check-item" data-key="build-ephemeral">
+        <div class="check-box"></div>
+        <div class="check-label">Decks ephemeral by default -- delete after analysis</div>
+      </div>
+      <div class="check-item" data-key="build-noauth">
+        <div class="check-box"></div>
+        <div class="check-label">No auth for alpha -- frictionless access</div>
+      </div>
+      <div class="check-item" data-key="build-mobile">
+        <div class="check-box"></div>
+        <div class="check-label">Mobile-friendly output (VCs read on phones)</div>
+      </div>
+      <div class="check-item" data-key="build-loom">
+        <div class="check-box"></div>
+        <div class="check-label">Record 30-sec Loom demo with anonymized deck</div>
+      </div>
+    </div>
+
+    <div class="checklist-section">
+      <h3>Distribution (Alpha Rollout)</h3>
+      <div class="check-item" data-key="dist-list">
+        <div class="check-box"></div>
+        <div class="check-label">List 10-15 VCs by name for inner circle</div>
+      </div>
+      <div class="check-item" data-key="dist-dm">
+        <div class="check-box"></div>
+        <div class="check-label">Write the DM -- "Built this for deck screening, structured analysis in under a minute, try it on real decks, tell me what's missing"</div>
+      </div>
+      <div class="check-item" data-key="dist-inner">
+        <div class="check-box"></div>
+        <div class="check-label">Send to inner circle (Phase 1, week 1-2)</div>
+      </div>
+      <div class="check-item" data-key="dist-intros">
+        <div class="check-box"></div>
+        <div class="check-label">Ask each user for warm intros (Phase 2, week 3-4)</div>
+      </div>
+      <div class="check-item" data-key="dist-slacks">
+        <div class="check-box"></div>
+        <div class="check-label">Post in VC Slack communities -- EVCA, Gen Z VCs (Phase 3, week 5-6)</div>
+      </div>
+      <div class="check-item" data-key="dist-x">
+        <div class="check-box"></div>
+        <div class="check-label">"I built this" post on X (Phase 3)</div>
+      </div>
+    </div>
+
+    <div class="checklist-section">
+      <h3>Track &amp; Measure</h3>
+      <div class="check-item" data-key="track-repeat">
+        <div class="check-box"></div>
+        <div class="check-label">Track repeat usage (target: 5+ users, 3+ decks each)</div>
+      </div>
+      <div class="check-item" data-key="track-share">
+        <div class="check-box"></div>
+        <div class="check-label">Watch for unprompted sharing (target: 2+ users)</div>
+      </div>
+      <div class="check-item" data-key="track-features">
+        <div class="check-box"></div>
+        <div class="check-label">Collect feature requests (target: 3+ specific asks)</div>
+      </div>
+      <div class="check-item" data-key="track-rels">
+        <div class="check-box"></div>
+        <div class="check-label">Note new relationships opened (target: 2+ from the tool)</div>
+      </div>
+    </div>
+
+    <div class="checklist-section" style="margin-top: 8px;">
+      <h3 style="color: var(--yellow);">Skip &rarr; Question (Answer After Alpha)</h3>
+      <div class="question-card">
+        <div class="q-label">Growth Levers</div>
+        <div class="q-text">What drives volume -- number of VCs or decks per VC? What's the binding constraint?</div>
+        <div class="q-context">Usage frequency determines whether $5/mo is a gift or $39/mo is justified. Track analyses per user per week during alpha. Segment by role.</div>
+      </div>
+      <div class="question-card">
+        <div class="q-label">LTV / Retention</div>
+        <div class="q-text">How often do VCs come back? Daily workflow tool or one-off? What feature drives weekly return?</div>
+        <div class="q-context">Target: 40%+ week-2 retention. If VCs try 3-5 decks and never return, it's a novelty, not a tool.</div>
+      </div>
+      <div class="question-card">
+        <div class="q-label">Revenue Mix</div>
+        <div class="q-text">Per-analysis, subscription, or enterprise? Business looks different depending on answer.</div>
+        <div class="q-context">After alpha validates retention, test $19/mo and $39/mo tiers. A/B test if possible; otherwise iterate sequentially.</div>
+      </div>
+    </div>
+
+    <div class="checklist-section" style="margin-top: 8px;">
+      <h3 style="color: var(--blue);">Strategic Clarifications</h3>
+      <div class="strat-note"><div class="strat-bullet"></div><div>This is a <strong style="color:var(--text);">lead gen tool first, product second.</strong> Success = VC conversations, not revenue.</div></div>
+      <div class="strat-note"><div class="strat-bullet"></div><div>Revenue trigger: <strong style="color:var(--text);">feature requests.</strong> $5/mo start, grandfather early users, price up as features added.</div></div>
+      <div class="strat-note"><div class="strat-bullet"></div><div>No feature requests = let it die naturally. The checklist IP survives regardless.</div></div>
+      <div class="strat-note"><div class="strat-bullet"></div><div>Entry point (associate vs partner) doesn't matter -- Imaan can navigate either path.</div></div>
+    </div>
+
+    <div class="checklist-section" style="margin-top: 8px;">
+      <h3>Research Complete</h3>
+      <div class="check-item done" data-key="research-landscape">
+        <div class="check-box"></div>
+        <div class="check-label">Competitive landscape -- investor-facing pitch deck tools</div>
+      </div>
+      <div class="check-item done" data-key="research-pricing">
+        <div class="check-box"></div>
+        <div class="check-label">Pricing benchmarks ($30-$100/mo sweet spot, free for alpha)</div>
+      </div>
+      <div class="check-item done" data-key="research-adoption">
+        <div class="check-box"></div>
+        <div class="check-label">VC tool adoption patterns and channels</div>
+      </div>
+      <div class="check-item done" data-key="research-distribution">
+        <div class="check-box"></div>
+        <div class="check-label">Distribution playbook (Granola/Harmonic/Superhuman pattern)</div>
+      </div>
+      <div class="check-item done" data-key="research-valuechain">
+        <div class="check-box"></div>
+        <div class="check-label">Value chain mapping -- 6 layers from enterprise to free</div>
+      </div>
+      <div class="check-item done" data-key="research-economics">
+        <div class="check-box"></div>
+        <div class="check-label">Unit economics hypothesis -- margins at $5/mo (66%), $39/mo (89%), $15/deck (96%)</div>
+      </div>
+      <div class="check-item done" data-key="research-cogs">
+        <div class="check-box"></div>
+        <div class="check-label">COGS modeling -- $0.03-$0.30/analysis, structurally low</div>
+      </div>
+    </div>
+
+    <div class="checklist-section" style="margin-top: 8px;">
+      <h3>Future (After Alpha Validation)</h3>
+      <div class="check-item" data-key="future-batch">
+        <div class="check-box"></div>
+        <div class="check-label">Batch upload as first paid feature</div>
+      </div>
+      <div class="check-item" data-key="future-whitelabel">
+        <div class="check-box"></div>
+        <div class="check-label">Consider white-label for accelerators if asked</div>
+      </div>
+      <div class="check-item" data-key="future-linkedin">
+        <div class="check-box"></div>
+        <div class="check-label">LinkedIn content: "I analyzed 50 decks with AI -- here's what gets funded"</div>
+      </div>
+      <div class="check-item" data-key="future-ph">
+        <div class="check-box"></div>
+        <div class="check-label">Product Hunt launch (only when polished)</div>
+      </div>
+      <div class="check-item" data-key="future-crm">
+        <div class="check-box"></div>
+        <div class="check-label">Affinity CRM integration</div>
+      </div>
+      <div class="check-item" data-key="future-ip">
+        <div class="check-box"></div>
+        <div class="check-label">Decide: should the 45 questions stay public or become proprietary?</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // --- Tab switching ---
+  const btns = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+
+  btns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      btns.forEach(b => b.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // --- Competitor expand/collapse ---
+  document.querySelectorAll('.comp-card[data-comp]').forEach(card => {
+    card.querySelector('.comp-header').addEventListener('click', () => {
+      card.classList.toggle('open');
+    });
+  });
+
+  // --- Checklist with localStorage ---
+  const STORAGE_KEY = 'venture-scale-checklist-v2';
+  let state = {};
+  try {
+    state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+  } catch(e) { state = {}; }
+
+  // Pre-set research-complete items as done
+  const researchKeys = [
+    'research-landscape', 'research-pricing', 'research-adoption',
+    'research-distribution', 'research-valuechain', 'research-economics', 'research-cogs'
+  ];
+  researchKeys.forEach(k => { if (state[k] === undefined) state[k] = true; });
+
+  const items = document.querySelectorAll('.check-item[data-key]');
+  const total = items.length;
+  const fill = document.getElementById('progress-fill');
+  const pct = document.getElementById('progress-pct');
+
+  function updateProgress() {
+    const done = Object.values(state).filter(Boolean).length;
+    const p = Math.round((done / total) * 100);
+    fill.style.width = p + '%';
+    pct.textContent = p + '%';
+  }
+
+  items.forEach(item => {
+    const key = item.dataset.key;
+    if (state[key]) item.classList.add('done');
+
+    item.addEventListener('click', () => {
+      state[key] = !state[key];
+      item.classList.toggle('done');
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+      updateProgress();
+    });
+  });
+
+  updateProgress();
+})();
+</script>
+</body>
+</html>

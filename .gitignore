@@ -6,6 +6,17 @@ input/*.PDF
 done/*.pdf
 done/*.PDF
 
+# Dependencies
+node_modules/
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Environment
+.env
+.env.local
+
 # OS files
 .DS_Store
 Thumbs.db
