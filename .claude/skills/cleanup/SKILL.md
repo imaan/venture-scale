@@ -142,7 +142,7 @@ iscrt env list
 Check that `.env` has all required keys:
 - `ANTHROPIC_API_KEY`
 - `RESEND_API_KEY`
-- `POSTHOG_KEY`
+- `POSTHOG_PROJECT_ID`
 - `AUTH_SECRET`
 - `APP_URL`
 

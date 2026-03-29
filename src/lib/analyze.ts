@@ -1,5 +1,3 @@
-import type { Bindings } from '../types';
-
 export interface AnalysisResult {
   company: {
     name: string;
@@ -165,60 +163,60 @@ Include ALL 45 questions in every response, with the correct stage value for eac
 
 export async function analyzeDeck(
   pdfBase64: string,
-  stage: number,
-  env: Bindings
+  stage: number
 ): Promise<AnalysisResult> {
+  const Anthropic = (await import('@anthropic-ai/sdk')).default;
+  const { toFile } = await import('@anthropic-ai/sdk');
+  const client = new Anthropic({ timeout: 10 * 60 * 1000 }); // 10 minutes
+
   const stageLabel = STAGE_LABELS[stage] ?? 'Seed';
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8192,
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: {
-                type: 'base64',
-                media_type: 'application/pdf',
-                data: pdfBase64,
-              },
-            },
-            {
-              type: 'text',
-              text: `Analyze this pitch deck. The company is raising at ${stageLabel} stage. Score all 45 questions and return the JSON analysis.`,
-            },
-          ],
-        },
-      ],
-    }),
+  // Upload PDF via Files API to avoid large base64 payloads
+  const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+  const fileUpload = await client.beta.files.upload({
+    file: await toFile(pdfBuffer, 'deck.pdf', { type: 'application/pdf' }),
+    betas: ['files-api-2025-04-14'],
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Anthropic API error ${response.status}: ${err}`);
+  // Use streaming to prevent idle connection timeout on long analyses
+  let fullText = '';
+  const stream = client.beta.messages.stream({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 8192,
+    betas: ['files-api-2025-04-14'],
+    system: SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: {
+              type: 'file',
+              file_id: fileUpload.id,
+            },
+          },
+          {
+            type: 'text',
+            text: `Analyze this pitch deck. The company is raising at ${stageLabel} stage. Score all 45 questions and return the JSON analysis.`,
+          },
+        ],
+      },
+    ],
+  });
+
+  for await (const event of stream) {
+    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+      fullText += event.delta.text;
+    }
   }
 
-  const data = await response.json() as {
-    content: Array<{ type: string; text?: string }>;
-  };
-
-  const textBlock = data.content.find((b) => b.type === 'text');
-  if (!textBlock?.text) {
+  if (!fullText) {
     throw new Error('No text response from Anthropic API');
   }
 
   // Parse JSON — strip any markdown fences if the model wraps them
-  let jsonStr = textBlock.text.trim();
+  let jsonStr = fullText.trim();
   if (jsonStr.startsWith('```')) {
     jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
   }

@@ -1,21 +1,4 @@
-import { Hono } from 'hono';
-import type { Bindings } from './types';
-import { authRoutes } from './routes/auth';
-import { analysisRoutes } from './routes/analysis';
-import { feedbackRoutes } from './routes/feedback';
-import { statsRoutes } from './routes/stats';
-
-const app = new Hono<{ Bindings: Bindings }>();
-
-// API routes
-app.route('/api/auth', authRoutes);
-app.route('/api/analysis', analysisRoutes);
-app.route('/api/feedback', feedbackRoutes);
-app.route('/api/stats', statsRoutes);
-
-// App page — the upload + analysis flow
-app.get('/app', (c) => {
-  return c.html(`<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -194,28 +177,24 @@ app.get('/app', (c) => {
     }
 
     // Poll for completion
-    let pollInterval = null;
     function startPolling(id) {
-      pollInterval = setInterval(async () => {
+      const poll = setInterval(async () => {
         try {
           const res = await fetch('/api/analysis/' + id + '/status');
           const data = await res.json();
-
           if (data.status === 'complete') {
-            clearInterval(pollInterval);
+            clearInterval(poll);
             stopTimer();
             document.getElementById('progressFill').style.width = '100%';
             document.getElementById('waitDetail').innerHTML = '<span class="step-label">Done!</span> Your report is ready.';
-            status.textContent = 'Redirecting to your report...';
             sendNotification('Venture Scale', 'Your deck analysis is ready! ' + (data.company || ''));
             setTimeout(() => { window.location.href = data.url; }, 800);
           } else if (data.status === 'error') {
-            clearInterval(pollInterval);
+            clearInterval(poll);
             stopTimer();
             resetUI();
             status.textContent = data.error || 'Analysis failed. Please try again.';
             status.classList.add('error');
-            sendNotification('Venture Scale', 'Analysis failed. Please try again.');
           }
         } catch { /* keep polling */ }
       }, 3000);
@@ -230,11 +209,9 @@ app.get('/app', (c) => {
       analyzeBtn.textContent = 'Analyze Deck';
     }
 
-    // Analyze
+    // Analyze — async with polling
     analyzeBtn.onclick = async () => {
       if (!selectedFile) return;
-
-      // Request notification permission on first analyze
       requestNotifications();
 
       analyzeBtn.disabled = true;
@@ -262,7 +239,7 @@ app.get('/app', (c) => {
           return;
         }
 
-        // Job accepted — show wait experience and start polling
+        // Show wait experience and poll
         analyzeBtn.textContent = 'Analyzing...';
         dropzone.style.display = 'none';
         document.querySelector('.stage-select').style.display = 'none';
@@ -270,7 +247,6 @@ app.get('/app', (c) => {
         document.getElementById('waitExperience').style.display = 'block';
         startTimer();
         startPolling(data.id);
-
       } catch (err) {
         status.textContent = 'Something went wrong. Please try again.';
         status.classList.add('error');
@@ -280,61 +256,4 @@ app.get('/app', (c) => {
     };
   </script>
 </body>
-</html>`);
-});
-
-// Report page — serve generated HTML from R2
-app.get('/report/:id', async (c) => {
-  const id = c.req.param('id');
-
-  // Validate UUID format to prevent path traversal
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-    return c.text('Invalid report ID', 400);
-  }
-
-  const obj = await c.env.STORAGE.get(`reports/${id}.html`);
-  if (!obj) return c.text('Report not found', 404);
-
-  const html = await obj.text();
-  return c.html(html);
-});
-
-// Changelog
-app.get('/changelog', (c) => {
-  return c.html(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Venture Scale — Changelog</title>
-  <style>
-    body { font-family: -apple-system, system-ui, sans-serif; background: #0a0a0a; color: #e8e8e8; line-height: 1.6; margin: 0; padding: 48px 24px; }
-    .container { max-width: 640px; margin: 0 auto; }
-    h1 { font-size: 1.5rem; margin-bottom: 32px; }
-    h2 { font-size: 1.125rem; color: #d4a72c; margin-top: 24px; }
-    ul { padding-left: 20px; color: #aaa; }
-    a { color: #d4a72c; }
-  </style>
-</head>
-<body>
-  <!-- Add new entries at the top. Format: <h2>[DATE] — [Title]</h2><ul><li>[Change]</li></ul> -->
-  <div class="container">
-    <h1>Changelog</h1>
-    <h2>2026-03-29 — Core Analysis</h2>
-    <ul>
-      <li>Upload a pitch deck PDF and get a scored analysis</li>
-      <li>45-question checklist with stage-gating</li>
-      <li>Interactive HTML reports with shareable URLs</li>
-    </ul>
-    <h2>2026-03-29 — Launch</h2>
-    <ul>
-      <li>Landing page with sample Airbnb analysis</li>
-      <li>Early access signups open</li>
-    </ul>
-    <p style="margin-top:32px"><a href="/">&larr; Back to Venture Scale</a></p>
-  </div>
-</body>
-</html>`);
-});
-
-export default app;
+</html>

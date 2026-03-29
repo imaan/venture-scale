@@ -19,6 +19,6 @@ bucket_name = "venture-scale-storage"
 # Environment variables (set via wrangler secret put)
 # ANTHROPIC_API_KEY — for Claude API calls
 # RESEND_API_KEY — for sending magic link emails
-# POSTHOG_KEY — PostHog project API key
+# POSTHOG_PROJECT_ID — PostHog public project identifier (not a secret)
 # APP_URL — the deployed URL (e.g., https://venture-scale.example.com)
 # AUTH_SECRET — secret for signing session tokens

@@ -4,10 +4,9 @@
   "description": "Evaluate pitch decks against the [Venture Scale Checklist](https://venture-scale.notion.site/The-Checklist-a04787b2ff8142cf85e896b343cf0888) — a 45-question investor framework that measures perceived certainty across Team, Problem, Solution, Market, Business Model, Value Creation, Competition, and Exit.",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "db:migrate": "wrangler d1 execute venture-scale-db --local --file=src/schema.sql",
-    "db:migrate:prod": "wrangler d1 execute venture-scale-db --file=src/schema.sql"
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
@@ -23,11 +22,22 @@
   "homepage": "https://github.com/imaan/venture-scale#readme",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
+    "@hono/node-server": "^1.19.11",
+    "better-sqlite3": "^12.8.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "hono": "^4.12.9",
+    "multer": "^2.1.1",
+    "node-fetch": "^3.3.2",
     "resend": "^6.9.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260329.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "wrangler": "^4.78.0"
   }

@@ -6,6 +6,9 @@ input/*.PDF
 done/*.pdf
 done/*.PDF
 
+# Data (SQLite DB + generated reports)
+data/
+
 # Dependencies
 node_modules/
 
