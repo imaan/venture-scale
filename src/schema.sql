@@ -20,12 +20,14 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
 CREATE TABLE IF NOT EXISTS analyses (
   id TEXT PRIMARY KEY,
   user_id TEXT,
-  company_name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'processing',
+  company_name TEXT NOT NULL DEFAULT '',
   stage INTEGER NOT NULL,
   score_verified INTEGER NOT NULL DEFAULT 0,
   score_quickwins INTEGER NOT NULL DEFAULT 0,
   score_gaps INTEGER NOT NULL DEFAULT 0,
   score_total INTEGER NOT NULL DEFAULT 0,
+  error TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );

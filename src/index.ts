@@ -193,6 +193,43 @@ app.get('/app', (c) => {
       if (timerInterval) clearInterval(timerInterval);
     }
 
+    // Poll for completion
+    let pollInterval = null;
+    function startPolling(id) {
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/analysis/' + id + '/status');
+          const data = await res.json();
+
+          if (data.status === 'complete') {
+            clearInterval(pollInterval);
+            stopTimer();
+            document.getElementById('progressFill').style.width = '100%';
+            document.getElementById('waitDetail').innerHTML = '<span class="step-label">Done!</span> Your report is ready.';
+            status.textContent = 'Redirecting to your report...';
+            sendNotification('Venture Scale', 'Your deck analysis is ready! ' + (data.company || ''));
+            setTimeout(() => { window.location.href = data.url; }, 800);
+          } else if (data.status === 'error') {
+            clearInterval(pollInterval);
+            stopTimer();
+            resetUI();
+            status.textContent = data.error || 'Analysis failed. Please try again.';
+            status.classList.add('error');
+            sendNotification('Venture Scale', 'Analysis failed. Please try again.');
+          }
+        } catch { /* keep polling */ }
+      }, 3000);
+    }
+
+    function resetUI() {
+      document.getElementById('waitExperience').style.display = 'none';
+      dropzone.style.display = '';
+      document.querySelector('.stage-select').style.display = '';
+      document.querySelector('.note').style.display = '';
+      analyzeBtn.disabled = false;
+      analyzeBtn.textContent = 'Analyze Deck';
+    }
+
     // Analyze
     analyzeBtn.onclick = async () => {
       if (!selectedFile) return;
@@ -201,19 +238,9 @@ app.get('/app', (c) => {
       requestNotifications();
 
       analyzeBtn.disabled = true;
-      analyzeBtn.textContent = 'Analyzing...';
+      analyzeBtn.textContent = 'Uploading...';
       status.textContent = '';
       status.classList.remove('error');
-
-      // Show wait experience
-      const waitEl = document.getElementById('waitExperience');
-      waitEl.style.display = 'block';
-      startTimer();
-
-      // Hide upload UI
-      dropzone.style.display = 'none';
-      document.querySelector('.stage-select').style.display = 'none';
-      document.querySelector('.note').style.display = 'none';
 
       const formData = new FormData();
       formData.append('deck', selectedFile);
@@ -222,14 +249,8 @@ app.get('/app', (c) => {
       try {
         const res = await fetch('/api/analysis/create', { method: 'POST', body: formData });
         const data = await res.json();
-        stopTimer();
 
         if (!res.ok) {
-          waitEl.style.display = 'none';
-          dropzone.style.display = '';
-          document.querySelector('.stage-select').style.display = '';
-          document.querySelector('.note').style.display = '';
-
           if (data.requiresAuth) {
             status.innerHTML = 'Sign up for 50 free analyses. <a href="/#signup" style="color:#d4a72c">Get started</a>';
           } else {
@@ -241,21 +262,16 @@ app.get('/app', (c) => {
           return;
         }
 
-        // Success
-        document.getElementById('progressFill').style.width = '100%';
-        document.getElementById('waitDetail').innerHTML = '<span class="step-label">Done!</span> Your report is ready.';
-        status.textContent = 'Redirecting to your report...';
+        // Job accepted — show wait experience and start polling
+        analyzeBtn.textContent = 'Analyzing...';
+        dropzone.style.display = 'none';
+        document.querySelector('.stage-select').style.display = 'none';
+        document.querySelector('.note').style.display = 'none';
+        document.getElementById('waitExperience').style.display = 'block';
+        startTimer();
+        startPolling(data.id);
 
-        // Notify if tab is in background
-        sendNotification('Venture Scale', 'Your deck analysis is ready! ' + (data.company || ''));
-
-        setTimeout(() => { window.location.href = data.url; }, 800);
       } catch (err) {
-        stopTimer();
-        document.getElementById('waitExperience').style.display = 'none';
-        dropzone.style.display = '';
-        document.querySelector('.stage-select').style.display = '';
-        document.querySelector('.note').style.display = '';
         status.textContent = 'Something went wrong. Please try again.';
         status.classList.add('error');
         analyzeBtn.disabled = false;

@@ -3,11 +3,12 @@ import type { Bindings } from '../types';
 import { analyzeDeck } from '../lib/analyze';
 import { generateReport } from '../lib/report';
 
-export const analysisRoutes = new Hono<{ Bindings: Bindings }>();
+type Env = { Bindings: Bindings };
 
-// POST /api/analysis/create — upload a deck and start analysis
+export const analysisRoutes = new Hono<Env>();
+
+// POST /api/analysis/create — upload a deck, return immediately, process in background
 analysisRoutes.post('/create', async (c) => {
-  // Parse multipart form data
   const formData = await c.req.formData();
   const file = formData.get('deck') as File | null;
   const stageStr = formData.get('stage') as string | null;
@@ -31,66 +32,10 @@ analysisRoutes.post('/create', async (c) => {
   const hasSession = cookies.includes('session=');
 
   if (hasFreeCookie && !hasSession) {
-    return c.json({
-      error: 'Sign up for 50 free analyses',
-      requiresAuth: true,
-    }, 401);
+    return c.json({ error: 'Sign up for 50 free analyses', requiresAuth: true }, 401);
   }
 
   // If authenticated, check credits
-  if (hasSession) {
-    const match = cookies.match(/session=([^;]+)/);
-    if (match) {
-      try {
-        const [payloadB64] = match[1].split('.');
-        const payload = JSON.parse(atob(payloadB64));
-        const user = await c.env.DB.prepare('SELECT credits FROM users WHERE id = ?')
-          .bind(payload.uid).first<{ credits: number }>();
-        if (user && user.credits <= 0) {
-          return c.json({ error: 'No credits remaining' }, 403);
-        }
-      } catch { /* proceed — auth verification happens elsewhere */ }
-    }
-  }
-
-  // Convert PDF to base64
-  const pdfBuffer = await file.arrayBuffer();
-  const pdfBase64 = arrayBufferToBase64(pdfBuffer);
-
-  // Generate analysis ID
-  const id = crypto.randomUUID();
-
-  // Run analysis via Claude API
-  let analysis;
-  try {
-    analysis = await analyzeDeck(pdfBase64, stage, c.env);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Analysis failed';
-    return c.json({ error: message }, 500);
-  }
-
-  // Generate HTML report
-  const reportHtml = generateReport(analysis);
-
-  // Store report in R2
-  await c.env.STORAGE.put(`reports/${id}.html`, reportHtml, {
-    httpMetadata: { contentType: 'text/html' },
-  });
-
-  // Count scores
-  let verified = 0, quickwins = 0, gaps = 0, total = 0;
-  for (const cat of analysis.categories) {
-    for (const q of cat.questions) {
-      if (q.stage <= stage) {
-        total++;
-        if (q.s === 'green') verified++;
-        else if (q.s === 'amber') quickwins++;
-        else gaps++;
-      }
-    }
-  }
-
-  // Store metadata in D1
   let userId: string | null = null;
   if (hasSession) {
     const match = cookies.match(/session=([^;]+)/);
@@ -99,49 +44,139 @@ analysisRoutes.post('/create', async (c) => {
         const [payloadB64] = match[1].split('.');
         const payload = JSON.parse(atob(payloadB64));
         userId = payload.uid;
-      } catch { /* anonymous */ }
+        const user = await c.env.DB.prepare('SELECT credits FROM users WHERE id = ?')
+          .bind(payload.uid).first<{ credits: number }>();
+        if (user && user.credits <= 0) {
+          return c.json({ error: 'No credits remaining' }, 403);
+        }
+      } catch { /* proceed */ }
     }
   }
 
+  // Read PDF into base64 before responding
+  const pdfBuffer = await file.arrayBuffer();
+  const pdfBase64 = arrayBufferToBase64(pdfBuffer);
+
+  // Generate analysis ID and create the DB record immediately
+  const id = crypto.randomUUID();
+
   await c.env.DB.prepare(
-    'INSERT INTO analyses (id, user_id, company_name, stage, score_verified, score_quickwins, score_gaps, score_total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(id, userId, analysis.company.name, stage, verified, quickwins, gaps, total).run();
+    "INSERT INTO analyses (id, user_id, status, company_name, stage) VALUES (?, ?, 'processing', '', ?)"
+  ).bind(id, userId, stage).run();
 
-  // Decrement credits if authenticated
-  if (userId) {
-    await c.env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE id = ? AND credits > 0')
-      .bind(userId).run();
-  }
-
-  // Increment usage counter
-  await c.env.DB.prepare("UPDATE stats SET value = value + 1 WHERE key = 'total_analyses'").run();
-
-  // Set free cookie if this was the first (free) analysis
+  // Set free cookie if this is the first (free) analysis
   const headers: Record<string, string> = {};
   if (!hasFreeCookie && !hasSession) {
     headers['Set-Cookie'] = 'vs_free=1; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=31536000';
   }
 
-  return c.json({
-    id,
-    status: 'complete',
-    url: `/report/${id}`,
-    company: analysis.company.name,
-    score: { verified, quickwins, gaps, total },
-  }, 200, headers);
+  // Process analysis in background via waitUntil
+  const env = c.env;
+  c.executionCtx.waitUntil(
+    processAnalysis(id, pdfBase64, stage, userId, env)
+  );
+
+  // Return immediately with the job ID
+  return c.json({ id, status: 'processing' }, 202, headers);
 });
 
-// GET /api/analysis/:id/status — check analysis status
+// GET /api/analysis/:id/status — poll for analysis completion
 analysisRoutes.get('/:id/status', async (c) => {
   const id = c.req.param('id');
 
-  const analysis = await c.env.DB.prepare(
-    'SELECT id, company_name, stage, score_verified, score_total, created_at FROM analyses WHERE id = ?'
-  ).bind(id).first();
+  const row = await c.env.DB.prepare(
+    'SELECT id, status, company_name, stage, score_verified, score_quickwins, score_gaps, score_total, error, created_at FROM analyses WHERE id = ?'
+  ).bind(id).first<{
+    id: string;
+    status: string;
+    company_name: string;
+    stage: number;
+    score_verified: number;
+    score_quickwins: number;
+    score_gaps: number;
+    score_total: number;
+    error: string | null;
+    created_at: string;
+  }>();
 
-  if (!analysis) return c.json({ error: 'Not found' }, 404);
-  return c.json({ analysis, status: 'complete' });
+  if (!row) return c.json({ error: 'Not found' }, 404);
+
+  if (row.status === 'complete') {
+    return c.json({
+      id: row.id,
+      status: 'complete',
+      url: `/report/${row.id}`,
+      company: row.company_name,
+      score: {
+        verified: row.score_verified,
+        quickwins: row.score_quickwins,
+        gaps: row.score_gaps,
+        total: row.score_total,
+      },
+    });
+  }
+
+  if (row.status === 'error') {
+    return c.json({ id: row.id, status: 'error', error: row.error });
+  }
+
+  return c.json({ id: row.id, status: 'processing' });
 });
+
+// Background processing function
+async function processAnalysis(
+  id: string,
+  pdfBase64: string,
+  stage: number,
+  userId: string | null,
+  env: Bindings
+): Promise<void> {
+  try {
+    // Run Claude API analysis
+    const analysis = await analyzeDeck(pdfBase64, stage, env);
+
+    // Generate HTML report
+    const reportHtml = generateReport(analysis);
+
+    // Store report in R2
+    await env.STORAGE.put(`reports/${id}.html`, reportHtml, {
+      httpMetadata: { contentType: 'text/html' },
+    });
+
+    // Count scores
+    let verified = 0, quickwins = 0, gaps = 0, total = 0;
+    for (const cat of analysis.categories) {
+      for (const q of cat.questions) {
+        if (q.stage <= stage) {
+          total++;
+          if (q.s === 'green') verified++;
+          else if (q.s === 'amber') quickwins++;
+          else gaps++;
+        }
+      }
+    }
+
+    // Update D1 with results
+    await env.DB.prepare(
+      "UPDATE analyses SET status = 'complete', company_name = ?, score_verified = ?, score_quickwins = ?, score_gaps = ?, score_total = ? WHERE id = ?"
+    ).bind(analysis.company.name, verified, quickwins, gaps, total, id).run();
+
+    // Decrement credits if authenticated
+    if (userId) {
+      await env.DB.prepare('UPDATE users SET credits = credits - 1 WHERE id = ? AND credits > 0')
+        .bind(userId).run();
+    }
+
+    // Increment usage counter
+    await env.DB.prepare("UPDATE stats SET value = value + 1 WHERE key = 'total_analyses'").run();
+
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Analysis failed';
+    await env.DB.prepare(
+      "UPDATE analyses SET status = 'error', error = ? WHERE id = ?"
+    ).bind(message, id).run();
+  }
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
