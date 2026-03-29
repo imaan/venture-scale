@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Airbnb - Pitch Deck Evaluation</title>
+<style>
+  [data-theme="dark"] {
+    --gold: #e8e4a0; --gold-dim: #b8b470; --bg: #0a0a0a; --bg-card: #141414;
+    --bg-card-hover: #1a1a1a; --text: #e0e0e0; --text-dim: #888; --text-bright: #fff;
+    --green: #4ade80; --green-bg: rgba(74,222,128,0.08);
+    --amber: #fbbf24; --amber-bg: rgba(251,191,36,0.08);
+    --red: #f87171; --red-bg: rgba(248,113,113,0.08);
+    --border: #222; --muted: #444;
+    --ring-track: #222; --bar-track: #1a1a1a;
+    --pill-active-bg: rgba(232,228,160,0.08); --row-hover: rgba(255,255,255,0.02);
+    --row-border: rgba(255,255,255,0.03); --excl-bg: rgba(255,255,255,0.03);
+    --qw-bg: rgba(251,191,36,0.03); --stage-tag-bg: rgba(255,255,255,0.05);
+  }
+  [data-theme="light"] {
+    --gold: #7a6d18; --gold-dim: #9a8a28; --bg: #f7f7f2; --bg-card: #fff;
+    --bg-card-hover: #fafaf5; --text: #333; --text-dim: #777; --text-bright: #111;
+    --green: #16a34a; --green-bg: rgba(22,163,74,0.07);
+    --amber: #b47d04; --amber-bg: rgba(180,125,4,0.07);
+    --red: #dc2626; --red-bg: rgba(220,38,38,0.06);
+    --border: #e2e2da; --muted: #bbb;
+    --ring-track: #e5e5e0; --bar-track: #eee;
+    --pill-active-bg: rgba(122,109,24,0.06); --row-hover: rgba(0,0,0,0.02);
+    --row-border: rgba(0,0,0,0.05); --excl-bg: rgba(0,0,0,0.03);
+    --qw-bg: rgba(180,125,4,0.04); --stage-tag-bg: rgba(0,0,0,0.05);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; transition: background 0.2s, color 0.2s; }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .theme-toggle { position: fixed; top: 16px; right: 16px; z-index: 100; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-dim); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .theme-toggle:hover { border-color: var(--gold-dim); color: var(--text); }
+
+  .header { text-align: center; margin-bottom: 40px; padding-bottom: 32px; border-bottom: 1px solid var(--border); }
+  .header-brand { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 16px; }
+  .header h1 { font-size: 32px; font-weight: 700; color: var(--text-bright); margin-bottom: 8px; }
+  .header-sub { font-size: 15px; color: var(--text-dim); margin-bottom: 24px; }
+  .header-meta { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+  .meta-tag { font-size: 13px; color: var(--text-dim); background: var(--bg-card); padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); }
+  .meta-tag strong { color: var(--text); }
+
+  .stage-selector { margin-bottom: 32px; }
+  .stage-selector-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+  .stage-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .stage-pill { font-size: 13px; padding: 8px 20px; border-radius: 24px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.15s; font-family: inherit; font-weight: 500; }
+  .stage-pill:hover { border-color: var(--gold-dim); color: var(--text); }
+  .stage-pill.active { border-color: var(--gold); color: var(--gold); background: var(--pill-active-bg); }
+  .stage-pill .pill-count { font-size: 11px; opacity: 0.6; margin-left: 4px; }
+
+  .methodology { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 32px; }
+  .methodology h2 { font-size: 16px; color: var(--gold); margin-bottom: 12px; font-weight: 600; }
+  .methodology p { font-size: 14px; color: var(--text-dim); margin-bottom: 16px; line-height: 1.7; }
+  .scoring-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 8px 14px; border-radius: 8px; }
+  .legend-item.green { background: var(--green-bg); color: var(--green); }
+  .legend-item.amber { background: var(--amber-bg); color: var(--amber); }
+  .legend-item.red { background: var(--red-bg); color: var(--red); }
+
+  .scorecard { margin-bottom: 32px; }
+  .scorecard h2 { font-size: 20px; font-weight: 700; color: var(--text-bright); margin-bottom: 20px; }
+  .score-overall { display: flex; align-items: center; gap: 32px; margin-bottom: 28px; padding: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; }
+  .score-ring { width: 100px; height: 100px; flex-shrink: 0; position: relative; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .score-ring-number { font-size: 28px; font-weight: 700; color: var(--gold); line-height: 1; }
+  .score-ring-label { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .score-summary-stats { display: flex; gap: 24px; flex-wrap: wrap; }
+  .stat-block { text-align: center; }
+  .stat-number { font-size: 24px; font-weight: 700; line-height: 1; }
+  .stat-number.green { color: var(--green); }
+  .stat-number.amber { color: var(--amber); }
+  .stat-number.red { color: var(--red); }
+  .stat-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .score-bars { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 40px; align-items: center; gap: 12px; cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: background 0.15s; }
+  .bar-row:hover { background: var(--bg-card); }
+  .bar-row.dimmed { opacity: 0.3; pointer-events: none; }
+  .bar-label { font-size: 13px; font-weight: 500; color: var(--text); }
+  .bar-track { height: 24px; background: var(--bar-track); border-radius: 4px; overflow: hidden; display: flex; }
+  .bar-fill-green { background: var(--green); height: 100%; transition: width 0.4s ease; }
+  .bar-fill-amber { background: var(--amber); height: 100%; transition: width 0.4s ease; }
+  .bar-fill-red { background: var(--red); height: 100%; opacity: 0.6; transition: width 0.4s ease; }
+  .bar-score { font-size: 13px; color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
+
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+  .filter-btn { font-size: 13px; padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.15s; font-family: inherit; }
+  .filter-btn:hover { border-color: var(--gold-dim); color: var(--text); }
+  .filter-btn.active { border-color: var(--gold); color: var(--gold); background: var(--pill-active-bg); }
+  .filter-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+  .category { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg-card); transition: opacity 0.3s; }
+  .category.all-excluded { opacity: 0.3; }
+  .category-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; cursor: pointer; user-select: none; transition: background 0.15s; }
+  .category-header:hover { background: var(--bg-card-hover); }
+  .category-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .category-name { font-size: 16px; font-weight: 600; color: var(--text-bright); }
+  .category-badge { font-size: 12px; padding: 2px 10px; border-radius: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .category-badge.good { background: var(--green-bg); color: var(--green); }
+  .category-badge.ok { background: var(--amber-bg); color: var(--amber); }
+  .category-badge.weak { background: var(--red-bg); color: var(--red); }
+  .category-stage-note { font-size: 11px; color: var(--text-dim); font-style: italic; }
+  .category-chevron { color: var(--text-dim); transition: transform 0.2s; font-size: 18px; }
+  .category.open .category-chevron { transform: rotate(180deg); }
+  .category-body { display: none; border-top: 1px solid var(--border); }
+  .category.open .category-body { display: block; animation: fadeIn 0.2s ease; }
+  .cat-desc { padding: 12px 20px 4px; font-size: 13px; color: var(--text-dim); border-bottom: 1px solid var(--row-border); }
+
+  .question-row { display: grid; grid-template-columns: 36px 1fr; gap: 0; padding: 14px 20px; border-bottom: 1px solid var(--row-border); transition: all 0.2s; }
+  .question-row:last-of-type { border-bottom: none; }
+  .question-row:hover { background: var(--row-hover); }
+  .question-row.excluded { opacity: 0.25; }
+  .question-row.hidden { display: none; }
+  .question-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-top: 1px; flex-shrink: 0; }
+  .question-icon.green { background: var(--green-bg); color: var(--green); }
+  .question-icon.amber { background: var(--amber-bg); color: var(--amber); }
+  .question-icon.red { background: var(--red-bg); color: var(--red); }
+  .question-icon.excluded-icon { background: var(--excl-bg); color: var(--muted); }
+  .question-content { min-width: 0; }
+  .question-text { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .question-stage-tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 8px; background: var(--stage-tag-bg); color: var(--text-dim); margin-left: 6px; font-weight: 400; vertical-align: middle; }
+  .question-notes { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+  .category-quickwins { padding: 16px 20px; background: var(--qw-bg); border-top: 1px solid var(--border); }
+  .quickwins-title { font-size: 12px; font-weight: 600; color: var(--amber); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .quickwins-list { list-style: none; padding: 0; }
+  .quickwins-list li { font-size: 13px; color: var(--text-dim); padding: 4px 0 4px 16px; position: relative; }
+  .quickwins-list li::before { content: ">"; position: absolute; left: 0; color: var(--amber); font-weight: 600; }
+
+  .recommendations { margin-top: 40px; }
+  .recommendations h2 { font-size: 20px; font-weight: 700; color: var(--text-bright); margin-bottom: 20px; }
+  .rec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  .rec-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .rec-card.quickwin { border-left: 3px solid var(--amber); }
+  .rec-card.structural { border-left: 3px solid var(--red); }
+  .rec-number { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .rec-card.quickwin .rec-number { color: var(--amber); }
+  .rec-card.structural .rec-number { color: var(--red); }
+  .rec-title { font-size: 15px; font-weight: 600; color: var(--text-bright); margin-bottom: 8px; }
+  .rec-desc { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+  .footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); text-align: center; font-size: 12px; color: var(--text-dim); }
+  .footer a { color: var(--gold-dim); text-decoration: none; }
+  .footer a:hover { color: var(--gold); }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @media (max-width: 640px) {
+    .rec-grid { grid-template-columns: 1fr; }
+    .score-overall { flex-direction: column; text-align: center; }
+    .bar-row { grid-template-columns: 100px 1fr 36px; }
+  }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode"></button>
+
+<div class="container">
+  <div class="header">
+    <div class="header-brand">Venture Scale Checklist</div>
+    <h1>Airbnb</h1>
+    <div class="header-sub">Pitch Deck Evaluation</div>
+    <div class="header-meta">
+      <span class="meta-tag"><strong>Revenue:</strong> Pre-revenue</span>
+      <span class="meta-tag"><strong>Traction:</strong> 80K+ nights booked</span>
+      <span class="meta-tag"><strong>Ask:</strong> $500K seed</span>
+      <span class="meta-tag"><strong>Source:</strong> Original 2009 deck</span>
+    </div>
+  </div>
+
+  <div class="stage-selector">
+    <div class="stage-selector-label">Evaluate for stage</div>
+    <div class="stage-pills" id="stagePills"></div>
+  </div>
+
+  <div class="methodology">
+    <h2>How this works</h2>
+    <p>Startup valuations are based on perceived certainty. This checklist evaluates whether the pitch deck surfaces enough information for an investor to get excited. Not all criteria matter equally at every stage &mdash; the stage filter above shows only what investors reasonably expect at that round.</p>
+    <p>Start by turning quick wins (&cir;) into verified (&check;) &mdash; these are deck edits, not business changes. Then work on closing structural gaps (&cross;).</p>
+    <div class="scoring-legend">
+      <div class="legend-item green"><span>&check;</span><strong>Verified</strong> &mdash; clear from the deck</div>
+      <div class="legend-item amber"><span>&cir;</span><strong>Quick win</strong> &mdash; true but not surfaced</div>
+      <div class="legend-item red"><span>&cross;</span><strong>Gap</strong> &mdash; not demonstrated</div>
+    </div>
+  </div>
+
+  <div class="scorecard">
+    <h2>Scorecard</h2>
+    <div class="score-overall" id="scoreOverall"></div>
+    <div class="score-bars" id="scoreBars"></div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="green">Verified</button>
+    <button class="filter-btn" data-filter="amber">Quick Wins</button>
+    <button class="filter-btn" data-filter="red">Gaps</button>
+    <div class="filter-sep"></div>
+    <button class="filter-btn" data-filter="excluded">Not expected at stage</button>
+  </div>
+
+  <div id="categories"></div>
+
+  <div class="recommendations">
+    <h2>Top Quick Wins</h2>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">True about the business but not surfaced in the deck. Deck edits only.</p>
+    <div class="rec-grid" id="quickWins"></div>
+    <h2>Top Structural Gaps</h2>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Require actual business changes, not just deck edits.</p>
+    <div class="rec-grid" id="structuralGaps"></div>
+  </div>
+
+  <div class="footer">
+    Framework: <a href="https://venture-scale.notion.site/The-Checklist-a04787b2ff8142cf85e896b343cf0888" target="_blank">Venture Scale Checklist</a> &middot; Demo analysis
+  </div>
+</div>
+
+<script>
+const STAGES = [
+  { id: 'pre-seed', label: 'Pre-Seed', idx: 0 },
+  { id: 'seed', label: 'Seed', idx: 1 },
+  { id: 'series-a', label: 'Series A+', idx: 2 }
+];
+const STAGE_LABELS = { 0: 'Pre-Seed', 1: 'Seed', 2: 'Series A+' };
+let currentStage = 1;
+
+const data = {
+  categories: [
+    {
+      name: "Team",
+      description: "Evaluates whether the founding team inspires confidence through experience, skills, character, and completeness.",
+      questions: [
+        { q: "Do you have strong experience in the space?", s: "amber", stage: 0, n: "Founders Brian Chesky and Joe Gebbia are RISD-trained designers, not hospitality veterans. They clearly understand the user experience angle but the deck doesn\u2019t position their design background as a strategic advantage for a travel marketplace." },
+        { q: "Can you demonstrate raw intellect?", s: "green", stage: 0, n: "RISD graduates, Y Combinator acceptance, and the creative problem-solving shown in the Obama O\u2019s cereal fundraising story all signal strong intellectual ability." },
+        { q: "Can you demonstrate integrity?", s: "green", stage: 0, n: "The bootstrapping story and transparent presentation of early metrics (including modest numbers) demonstrate honesty rather than inflated claims." },
+        { q: "Are you mission driven?", s: "green", stage: 0, n: "Clear passion for connecting travelers with local experiences. The deck frames this as a movement, not just a business\u2014\u201Cbelonging anywhere\u201D is a mission statement." },
+        { q: "Are you proven leaders?", s: "amber", stage: 1, n: "First-time founders at this stage. Leadership is demonstrated through bootstrapping and early traction, but the deck doesn\u2019t explicitly address leadership experience or team management." },
+        { q: "Can you demonstrate a high level of commercial awareness?", s: "amber", stage: 1, n: "The deck shows market sizing and revenue model awareness, but the commercial details are thin\u2014no CAC, LTV, or unit economics. The 10% commission model is stated but not justified against alternatives." },
+        { q: "Can you demonstrate a deep understanding of the market?", s: "green", stage: 1, n: "Strong market analysis: identifies CouchSurfing limitations, hotel price pain points, and the emerging sharing economy trend. The deck clearly understands both supply and demand dynamics." },
+        { q: "Can you demonstrate grit and tenacity?", s: "green", stage: 0, n: "The Obama O\u2019s cereal story is one of startup lore\u2019s best grit examples. Selling custom cereal boxes to fund the company during a financial crisis demonstrates extraordinary resourcefulness." },
+        { q: "Can you demonstrate deep technical skills?", s: "green", stage: 0, n: "The team built the entire platform themselves. Nathan Blecharczyk (CTO) brings strong engineering credentials. The product is live and functional." },
+        { q: "Is your team sufficiently diverse?", s: "red", stage: 1, n: "Three male co-founders with similar educational backgrounds (two from RISD). No diversity in gender, ethnicity, or professional background visible in the deck." },
+        { q: "Are there any clear skill gaps in your team?", s: "amber", stage: 1, n: "No dedicated sales, marketing, or BD person mentioned. For a marketplace that needs to acquire both hosts and guests, the lack of a growth/acquisition specialist is notable but not unusual at seed." },
+        { q: "Does your team contain a customer acquisition expert?", s: "red", stage: 1, n: "No team member is positioned as owning customer acquisition. The deck mentions growth channels but doesn\u2019t assign ownership. At seed stage, this is a meaningful gap for a two-sided marketplace." },
+        { q: "Does your team have a COO/logistics expert?", s: "red", stage: 2, n: "No operations leader identified. As the platform scales to handle payments, disputes, and safety, this will become critical." },
+        { q: "Can you demonstrate humility?", s: "green", stage: 0, n: "The deck presents honest early numbers without overpromising. The framing is \u201Chere\u2019s what we\u2019ve learned\u201D rather than \u201Cwe\u2019re the next billion-dollar company.\u201D" }
+      ],
+      quickwins: [
+        "Frame RISD design background as a strategic moat\u2014Airbnb is a trust and experience product, and design-led founders are the right team for that.",
+        "Add the Obama O\u2019s story as a dedicated \u201Cgrit\u201D slide instead of burying it\u2014it\u2019s the most memorable founder story in the deck."
+      ]
+    },
+    {
+      name: "Problem",
+      description: "Tests whether the problem is real and validated, and whether this team is uniquely positioned to solve it.",
+      questions: [
+        { q: "Can you demonstrate that the problem truly exists (through validation)?", s: "green", stage: 0, n: "Strong problem validation: references CouchSurfing\u2019s 630K+ listings (proving demand for alternatives to hotels), hotel price data showing consistent increases, and their own 80,000+ nights booked as proof of demand." },
+        { q: "Is your company uniquely placed to solve this problem?", s: "amber", stage: 1, n: "The deck shows first-mover advantage in peer-to-peer accommodation, but doesn\u2019t articulate why this specific team is uniquely positioned beyond having built it first. The design background is an asset but isn\u2019t framed that way." }
+      ],
+      quickwins: [
+        "Explicitly connect the founders\u2019 design expertise to why they\u2019re uniquely suited to solve a trust-dependent marketplace problem."
+      ]
+    },
+    {
+      name: "Solution",
+      description: "Assesses whether customers love the product, whether it solves a real pain, and whether the solution can scale.",
+      questions: [
+        { q: "Can you show that customers actually like your solution?", s: "green", stage: 1, n: "80,000+ nights booked is strong early traction. The deck also references returning users and positive host feedback, suggesting genuine product-market fit signals." },
+        { q: "Is your product a true painkiller, or merely a vitamin?", s: "green", stage: 0, n: "Clear painkiller: saves travelers 30-80% vs hotels while letting hosts earn money from unused space. Both sides of the marketplace have a strong financial incentive." },
+        { q: "Is it 50% cheaper or faster?", s: "green", stage: 0, n: "The deck explicitly positions Airbnb as significantly cheaper than hotels\u2014showing price comparisons that demonstrate 50-80% savings in major cities." },
+        { q: "Does it scale effectively?", s: "green", stage: 2, n: "Pure marketplace model with zero inventory cost. Each new listing is user-generated content that costs Airbnb nothing to add. Network effects strengthen with scale." }
+      ],
+      quickwins: []
+    },
+    {
+      name: "Market",
+      description: "Evaluates the size, growth trajectory, and timing of the market opportunity, plus the go-to-market plan.",
+      questions: [
+        { q: "Do you have a sufficiently large (>$1bn) TAM?", s: "green", stage: 0, n: "The deck cites a $1.9B market in budget online travel and references the broader $40B+ travel accommodation market. TAM clearly exceeds the $1B threshold." },
+        { q: "Is your TAM realistic?", s: "amber", stage: 1, n: "The $1.9B figure is cited but the bottom-up calculation isn\u2019t shown. How they derived this number from budget travel spend isn\u2019t detailed. A slide showing the build-up would strengthen credibility." },
+        { q: "Will the market grow over time?", s: "green", stage: 0, n: "Online travel bookings were growing 20%+ annually at the time. The deck references this tailwind and the broader shift to peer-to-peer commerce." },
+        { q: "Is the market in the middle of a shift?", s: "green", stage: 0, n: "Perfect timing: post-2008 recession making people cost-conscious, sharing economy emerging (Uber launched same year), and trust in peer-to-peer platforms increasing via social proof." },
+        { q: "Do you have a solid Go-To-Market plan?", s: "amber", stage: 1, n: "The deck mentions event-based marketing (targeting conferences and festivals) and Craigslist integration, but the GTM plan lacks detail on sequencing, budget, and metrics." },
+        { q: "How aware are customers of the problem?", s: "green", stage: 1, n: "Everyone knows hotels are expensive. CouchSurfing\u2019s 630K+ users prove that travelers actively seek alternatives. The problem awareness is high\u2014Airbnb\u2019s pitch is a better solution, not problem education." }
+      ],
+      quickwins: [
+        "Add a bottom-up TAM calculation showing how you get to $1.9B from individual city markets and average booking values.",
+        "Expand the GTM slide with specific channels, sequencing, and target metrics for the next 12 months."
+      ]
+    },
+    {
+      name: "Business Model",
+      description: "Stress-tests the revenue model, projections, pricing, and key dependencies for concentration risk.",
+      questions: [
+        { q: "Are your revenue projections realistic?", s: "amber", stage: 1, n: "The deck includes projections but they\u2019re aspirational without detailed assumptions. The path from 80K nights booked to the projected growth curve isn\u2019t broken down by driver." },
+        { q: "Do you have a customer acquisition plan?", s: "red", stage: 1, n: "No detailed CAC analysis or channel-by-channel acquisition plan. The deck mentions Craigslist and events but doesn\u2019t quantify costs or conversion rates." },
+        { q: "Is your pricing model clear and simple?", s: "green", stage: 0, n: "Crystal clear: Airbnb takes a 10% service fee from hosts on each booking. Simple, easy to understand, and aligned with value delivery." },
+        { q: "Does your model benefit from network effects?", s: "green", stage: 2, n: "Classic two-sided network effect: more hosts attract more guests, more guests attract more hosts. Each new listing makes the platform more valuable." },
+        { q: "Does your model generate recurring revenue?", s: "green", stage: 2, n: "Transaction-based but effectively recurring\u2014travelers book multiple trips per year, hosts list continuously. High natural repeat rate." },
+        { q: "Do you have any obvious cashflow limitations?", s: "green", stage: 1, n: "Marketplace model with payment processing means Airbnb holds guest funds until check-in. Positive cash flow dynamics\u2014they collect before they pay out." },
+        { q: "Are you overly reliant on a specific customer segment?", s: "amber", stage: 1, n: "Early traction is heavily concentrated on event-based travel (conferences, festivals). The deck doesn\u2019t show evidence of broader use cases beyond event-driven stays." },
+        { q: "Are you overly reliant on a specific employee type?", s: "green", stage: 2, n: "Platform model doesn\u2019t depend on specialized employees. Hosts are independent operators, and the core team is engineering-focused." },
+        { q: "Are you overly reliant on a specific supplier?", s: "green", stage: 1, n: "Thousands of independent hosts across multiple cities. No single host represents a meaningful percentage of supply. Low supplier concentration risk." }
+      ],
+      quickwins: [
+        "Add a slide showing unit economics: average booking value, take rate, CAC estimate, and projected LTV.",
+        "Show traction beyond events\u2014if leisure or business travel bookings exist, surface them."
+      ]
+    },
+    {
+      name: "Value Creation",
+      description: "Examines the uniqueness of the offering, its defensibility (legal and creative), and the realistic revenue ceiling.",
+      questions: [
+        { q: "What is your unique selling point (USP)?", s: "green", stage: 0, n: "Clear USP: a trusted peer-to-peer marketplace for unique accommodations at a fraction of hotel prices. The combination of trust (reviews, profiles) with price advantage is well articulated." },
+        { q: "Is your USP legally defensible?", s: "red", stage: 2, n: "No patents, no proprietary technology discussed. The regulatory landscape for short-term rentals is a significant risk that isn\u2019t addressed. Many cities would later challenge Airbnb\u2019s legality." },
+        { q: "Is your USP creatively defensible?", s: "amber", stage: 1, n: "Brand and network effects provide some creative defensibility, but the deck doesn\u2019t articulate moats beyond first-mover advantage. At seed, this is acceptable but should be addressed." },
+        { q: "Does your business have genuinely high ($100M+/yr) revenue potential?", s: "green", stage: 2, n: "At 10% of a multi-billion dollar TAM with strong network effects and global scalability, $100M+ annual revenue is clearly achievable." }
+      ],
+      quickwins: [
+        "Add a slide on defensibility: what makes Airbnb hard to copy? Network effects, trust/review data, and brand are all valid moats."
+      ]
+    },
+    {
+      name: "Competition",
+      description: "Tests whether you have a defensible head start and whether competitors face real barriers to copying you.",
+      questions: [
+        { q: "Do you have an early mover advantage?", s: "green", stage: 1, n: "Clear first mover in peer-to-peer accommodation. CouchSurfing exists but isn\u2019t monetized and doesn\u2019t offer the same trust infrastructure. VRBO targets a different segment (vacation homes, not shared spaces)." },
+        { q: "Do you have a logical acquiring company?", s: "green", stage: 2, n: "Multiple logical acquirers: Expedia, Booking.com, Google Travel, or any major hospitality company wanting marketplace capabilities." },
+        { q: "Do your competitors have significant barriers to entry?", s: "amber", stage: 2, n: "Traditional hotel chains face cultural and structural barriers to offering peer-to-peer stays. However, other tech platforms could replicate the marketplace model." }
+      ],
+      quickwins: []
+    },
+    {
+      name: "Exit",
+      description: "Assesses whether investors can see a clear path to returns \u2014 via IPO, acquisition, or strong industry multiples.",
+      questions: [
+        { q: "Are you a realistic prospect for a future IPO?", s: "green", stage: 2, n: "With a $40B+ addressable market and a capital-light marketplace model, IPO is a realistic path if the company achieves scale. (Airbnb did IPO in 2020 at a $47B valuation.)" },
+        { q: "Are you a realistic prospect for a future acquisition?", s: "green", stage: 2, n: "Highly attractive acquisition target for any major travel or tech platform wanting to add unique accommodation inventory." },
+        { q: "Does your industry vertical have a strong exit multiple?", s: "green", stage: 2, n: "Online travel platforms trade at high revenue multiples (6-15x). Marketplace models with network effects command premium valuations." }
+      ],
+      quickwins: []
+    }
+  ],
+  topQuickWins: [
+    { title: "Frame design background as a strategic moat", desc: "Airbnb is fundamentally a trust product. RISD-trained founders building a design-led experience is a strength, not a gap\u2014but the deck treats it as biography rather than strategy.", stage: 0 },
+    { title: "Show the TAM bottom-up", desc: "The $1.9B figure needs a build-up: number of cities \u00D7 average listings \u00D7 average booking value \u00D7 commission rate. One slide turns a claim into a credible forecast.", stage: 1 },
+    { title: "Surface the Obama O\u2019s story prominently", desc: "It\u2019s buried in the deck but it\u2019s the single most memorable proof of grit and resourcefulness. Make it a dedicated slide\u2014VCs retell this story to their partners.", stage: 0 },
+    { title: "Add unit economics", desc: "Average booking value, take rate, estimated CAC, and projected LTV. Even rough numbers show commercial awareness and give investors something to model.", stage: 1 },
+    { title: "Show traction beyond events", desc: "If any bookings happen outside of conferences and festivals, surface that data. It proves the use case extends beyond event-driven travel.", stage: 1 }
+  ],
+  structuralGaps: [
+    { title: "No customer acquisition plan", desc: "For a two-sided marketplace that needs to acquire both hosts and guests, the absence of a detailed CAC analysis and channel strategy is a significant gap. Craigslist integration is clever but not a sustainable growth engine.", stage: 1 },
+    { title: "No growth/acquisition owner on the team", desc: "None of the three co-founders is positioned as owning customer acquisition. At seed stage for a marketplace, this is a meaningful hiring gap that should be addressed in the use-of-funds.", stage: 1 },
+    { title: "Team diversity", desc: "Three male co-founders with similar educational backgrounds. For a platform that needs to build trust across diverse global communities, the founding team\u2019s homogeneity is a structural risk that becomes more visible at scale.", stage: 1 }
+  ]
+};
+
+// Theme
+const toggle = document.getElementById('themeToggle');
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  toggle.textContent = t === 'dark' ? '\u2600' : '\u263E';
+  localStorage.setItem('vs-demo-theme', t);
+}
+toggle.onclick = () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+setTheme(localStorage.getItem('vs-demo-theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+
+function isActive(s) { return s <= currentStage; }
+
+function getStats() {
+  let g=0, a=0, r=0, total=0, excluded=0;
+  const cats = [];
+  data.categories.forEach(cat => {
+    let cg=0, ca=0, cr=0, ce=0;
+    cat.questions.forEach(q => {
+      if (isActive(q.stage)) { total++; if(q.s==='green'){g++;cg++}else if(q.s==='amber'){a++;ca++}else{r++;cr++} } else { excluded++; ce++; }
+    });
+    cats.push({g:cg, a:ca, r:cr, e:ce, total:cg+ca+cr});
+  });
+  return {g,a,r,total,excluded,cats};
+}
+
+function render() {
+  const st = getStats();
+  const pct = st.total>0 ? Math.round(st.g/st.total*100) : 0;
+  const circ = 2*Math.PI*42;
+  const off = circ-(pct/100)*circ;
+
+  const pills = document.getElementById('stagePills');
+  pills.innerHTML = STAGES.map(s => {
+    let c=0; data.categories.forEach(cat=>cat.questions.forEach(q=>{if(q.stage<=s.idx)c++}));
+    return `<button class="stage-pill${s.idx===currentStage?' active':''}" data-stage="${s.idx}">${s.label}<span class="pill-count">${c}</span></button>`;
+  }).join('');
+  pills.querySelectorAll('.stage-pill').forEach(b=>{b.onclick=()=>{currentStage=+b.dataset.stage;render();if(window.parent!==window){try{window.parent.document.getElementById('demo-iframe').style.height=document.body.scrollHeight+'px'}catch(e){}}}});
+
+  document.getElementById('scoreOverall').innerHTML = `
+    <div class="score-ring"><svg width="100" height="100" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="var(--ring-track)" stroke-width="6"/>
+      <circle cx="50" cy="50" r="42" fill="none" stroke="var(--gold)" stroke-width="6" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round"/>
+    </svg><div class="score-ring-text"><span class="score-ring-number">${pct}%</span><span class="score-ring-label">verified</span></div></div>
+    <div class="score-summary-stats">
+      <div class="stat-block"><div class="stat-number green">${st.g}</div><div class="stat-label">Verified</div></div>
+      <div class="stat-block"><div class="stat-number amber">${st.a}</div><div class="stat-label">Quick Wins</div></div>
+      <div class="stat-block"><div class="stat-number red">${st.r}</div><div class="stat-label">Gaps</div></div>
+      <div class="stat-block"><div class="stat-number" style="color:var(--text-dim)">${st.total}</div><div class="stat-label">At Stage</div></div>
+      ${st.excluded>0?`<div class="stat-block"><div class="stat-number" style="color:var(--muted)">${st.excluded}</div><div class="stat-label">Later Stage</div></div>`:''}
+    </div>`;
+
+  const bars = document.getElementById('scoreBars'); bars.innerHTML='';
+  data.categories.forEach((cat,i) => {
+    const c=st.cats[i], dim=c.total===0;
+    const gP=c.total>0?c.g/c.total*100:0, aP=c.total>0?c.a/c.total*100:0, rP=c.total>0?c.r/c.total*100:0;
+    bars.innerHTML+=`<div class="bar-row${dim?' dimmed':''}" data-cat="${i}"><span class="bar-label">${cat.name}</span><div class="bar-track"><div class="bar-fill-green" style="width:${gP}%"></div><div class="bar-fill-amber" style="width:${aP}%"></div><div class="bar-fill-red" style="width:${rP}%"></div></div><span class="bar-score">${dim?'\u2014':c.g+'/'+c.total}</span></div>`;
+  });
+  bars.querySelectorAll('.bar-row:not(.dimmed)').forEach(r=>{r.onclick=()=>{const e=document.querySelectorAll('.category')[+r.dataset.cat];e.classList.add('open');e.scrollIntoView({behavior:'smooth',block:'start'})}});
+
+  const cEl=document.getElementById('categories'); cEl.innerHTML='';
+  data.categories.forEach((cat,i) => {
+    const c=st.cats[i], allEx=c.total===0;
+    const p=c.total>0?Math.round(c.g/c.total*100):0;
+    const bc=allEx?'':p>=60?'good':p>=40?'ok':'weak';
+    let h=`<div class="category${allEx?' all-excluded':''}${i===0&&!allEx?' open':''}" data-index="${i}">
+      <div class="category-header" onclick="this.parentElement.classList.toggle('open');if(window.parent!==window){try{setTimeout(()=>{window.parent.document.getElementById('demo-iframe').style.height=document.body.scrollHeight+'px'},300)}catch(e){}}"><div class="category-left"><span class="category-name">${cat.name}</span>
+      ${allEx?'<span class="category-stage-note">Not expected at '+STAGE_LABELS[currentStage]+'</span>':'<span class="category-badge '+bc+'">'+c.g+'/'+c.total+' verified</span>'+(c.e>0?'<span class="category-stage-note">+'+c.e+' later</span>':'')}</div><span class="category-chevron">\u25BE</span></div>
+      <div class="category-body"><div class="cat-desc">${cat.description}</div>`;
+    cat.questions.forEach(q=>{
+      const act=isActive(q.stage), ic=act?(q.s==='green'?'\u2713':q.s==='amber'?'\u25CB':'\u2717'):'\u2014';
+      const icl=act?q.s:'excluded-icon', tag=!act?`<span class="question-stage-tag">${STAGE_LABELS[q.stage]}+</span>`:'';
+      h+=`<div class="question-row${act?'':' excluded'}" data-score="${act?q.s:'excluded'}"><div class="question-icon ${icl}">${ic}</div><div class="question-content"><div class="question-text">${q.q}${tag}</div><div class="question-notes">${q.n}</div></div></div>`;
+    });
+    if(cat.quickwins.length>0&&c.total>0){h+=`<div class="category-quickwins"><div class="quickwins-title">Quick wins</div><ul class="quickwins-list">${cat.quickwins.map(w=>'<li>'+w+'</li>').join('')}</ul></div>`}
+    h+=`</div></div>`; cEl.innerHTML+=h;
+  });
+
+  const qw=document.getElementById('quickWins'); qw.innerHTML='';
+  data.topQuickWins.filter(r=>r.stage<=currentStage).forEach((r,i)=>{qw.innerHTML+=`<div class="rec-card quickwin"><div class="rec-number">Quick win ${i+1}</div><div class="rec-title">${r.title}</div><div class="rec-desc">${r.desc}</div></div>`});
+  const sg=document.getElementById('structuralGaps'); sg.innerHTML='';
+  data.structuralGaps.filter(r=>r.stage<=currentStage).forEach((r,i)=>{sg.innerHTML+=`<div class="rec-card structural"><div class="rec-number">Structural gap ${i+1}</div><div class="rec-title">${r.title}</div><div class="rec-desc">${r.desc}</div></div>`});
+
+  bindFilters();
+}
+
+function bindFilters(){
+  document.querySelectorAll('.filter-btn').forEach(b=>{b.onclick=()=>{
+    document.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+    const f=b.dataset.filter;
+    document.querySelectorAll('.question-row').forEach(r=>{if(f==='all')r.classList.remove('hidden');else if(f==='excluded')r.classList.toggle('hidden',r.dataset.score!=='excluded');else r.classList.toggle('hidden',r.dataset.score!==f)});
+    document.querySelectorAll('.category').forEach(c=>{const v=c.querySelectorAll('.question-row:not(.hidden)');if(f!=='all'&&v.length>0)c.classList.add('open')});
+    // Resize parent iframe
+    if(window.parent!==window){try{setTimeout(()=>{window.parent.document.getElementById('demo-iframe').style.height=document.body.scrollHeight+'px'},300)}catch(e){}}
+  }});
+}
+
+render();
+</script>
+</body>
+</html>

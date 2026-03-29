@@ -1,0 +1,24 @@
+name = "venture-scale"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[assets]
+directory = "public"
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "venture-scale-db"
+database_id = "8f48d87f-9538-4c6a-8331-2d0c6d436fbb"
+
+# R2 Bucket — temporary PDF storage + result HTML
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "venture-scale-storage"
+
+# Environment variables (set via wrangler secret put)
+# ANTHROPIC_API_KEY — for Claude API calls
+# RESEND_API_KEY — for sending magic link emails
+# POSTHOG_PROJECT_ID — PostHog public project identifier (not a secret)
+# APP_URL — the deployed URL (e.g., https://venture-scale.example.com)
+# AUTH_SECRET — secret for signing session tokens

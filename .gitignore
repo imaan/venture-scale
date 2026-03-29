@@ -6,6 +6,20 @@ input/*.PDF
 done/*.pdf
 done/*.PDF
 
+# Data (SQLite DB + generated reports)
+data/
+
+# Dependencies
+node_modules/
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# Environment
+.env
+.env.local
+
 # OS files
 .DS_Store
 Thumbs.db
