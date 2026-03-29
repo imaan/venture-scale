@@ -80,6 +80,29 @@ analysisRoutes.post('/create', async (c) => {
   return c.json({ id, status: 'processing' }, 202, headers);
 });
 
+// GET /api/analysis/test — debug: test Claude API call with a tiny payload
+analysisRoutes.get('/test', async (c) => {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': c.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6-20250514',
+        max_tokens: 100,
+        messages: [{ role: 'user', content: 'Say "hello" and nothing else.' }],
+      }),
+    });
+    const data = await res.json();
+    return c.json({ ok: res.ok, status: res.status, data });
+  } catch (err) {
+    return c.json({ error: String(err) }, 500);
+  }
+});
+
 // GET /api/analysis/:id/status — poll for analysis completion
 analysisRoutes.get('/:id/status', async (c) => {
   const id = c.req.param('id');
