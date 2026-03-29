@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { serveStatic } from 'hono/cloudflare-workers';
 import type { Bindings } from './types';
 import { authRoutes } from './routes/auth';
 import { analysisRoutes } from './routes/analysis';
@@ -16,53 +15,176 @@ app.route('/api/stats', statsRoutes);
 
 // App page — the upload + analysis flow
 app.get('/app', (c) => {
-  // TODO [productionize]: Implement the upload + analysis flow
-  // This page should:
-  // 1. Show a drag-drop PDF upload area + stage selector
-  // 2. On submit, POST to /api/analysis/create (uploads PDF to R2, starts analysis)
-  // 3. Poll /api/analysis/:id/status until complete
-  // 4. Redirect to /report/:id to view the scored analysis
-  //
-  // First analysis is free (no auth required).
-  // Subsequent analyses require auth — check for session cookie.
-  // If no session, show "Get 50 free scans" email capture.
   return c.html(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Venture Scale — Score a Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: -apple-system, system-ui, sans-serif; background: #0a0a0a; color: #e8e8e8; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    .upload-area { max-width: 480px; text-align: center; padding: 48px; border: 2px dashed #333; border-radius: 16px; }
-    .upload-area h1 { font-size: 1.5rem; margin-bottom: 12px; }
-    .upload-area p { color: #888; margin-bottom: 24px; }
-    .btn { display: inline-block; padding: 12px 32px; background: #d4a72c; color: #0a0a0a; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; text-decoration: none; }
-    .btn:hover { opacity: 0.88; }
-    .coming-soon { margin-top: 16px; font-size: 0.8125rem; color: #666; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{--accent:#d4a72c;--bg:#0a0a0a;--text:#e8e8e8;--text-muted:#888;--surface:#141414;--border:#222}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .container{max-width:520px;width:100%;padding:48px 24px;text-align:center}
+    h1{font-size:1.75rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:8px}
+    .subtitle{color:var(--text-muted);margin-bottom:32px;font-size:0.9375rem}
+    .upload-zone{border:2px dashed var(--border);border-radius:16px;padding:48px 24px;cursor:pointer;transition:border-color 0.2s,background 0.2s;margin-bottom:24px}
+    .upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(212,167,44,0.04)}
+    .upload-zone.has-file{border-color:var(--accent);border-style:solid}
+    .upload-icon{font-size:2.5rem;margin-bottom:12px;opacity:0.4}
+    .upload-text{color:var(--text-muted);font-size:0.875rem}
+    .upload-text strong{color:var(--text)}
+    .file-name{font-family:'JetBrains Mono',monospace;font-size:0.8125rem;color:var(--accent);margin-top:8px}
+    .stage-select{display:flex;gap:8px;justify-content:center;margin-bottom:24px}
+    .stage-btn{font-family:inherit;font-size:0.8125rem;padding:8px 20px;border-radius:24px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;transition:all 0.15s}
+    .stage-btn:hover{border-color:var(--accent);color:var(--text)}
+    .stage-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(212,167,44,0.08)}
+    .analyze-btn{font-family:inherit;font-size:1rem;font-weight:600;padding:14px 40px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;cursor:pointer;transition:opacity 0.2s;width:100%;max-width:320px}
+    .analyze-btn:hover{opacity:0.88}
+    .analyze-btn:disabled{opacity:0.4;cursor:not-allowed}
+    .status{margin-top:24px;font-size:0.875rem;color:var(--text-muted)}
+    .status.error{color:#f87171}
+    .progress{margin-top:16px}
+    .progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+    .progress-fill{height:100%;background:var(--accent);width:0%;transition:width 0.3s;animation:loading 2s ease-in-out infinite}
+    @keyframes loading{0%{width:0%}50%{width:70%}100%{width:100%}}
+    .back-link{display:inline-block;margin-top:24px;font-size:0.8125rem;color:var(--text-muted);text-decoration:none}
+    .back-link:hover{color:var(--accent)}
+    .note{font-size:0.75rem;color:var(--text-muted);margin-top:12px}
   </style>
 </head>
 <body>
-  <div class="upload-area">
+  <div class="container">
     <h1>Score a Pitch Deck</h1>
-    <p>Upload a PDF, pick the stage, get a scored report in 60 seconds.</p>
-    <label class="btn" for="deck-upload">Upload PDF</label>
-    <input type="file" id="deck-upload" accept=".pdf" style="display:none">
-    <p class="coming-soon">Core analysis feature coming soon. See the <a href="/" style="color:#d4a72c">sample report</a> for what to expect.</p>
+    <p class="subtitle">Upload a PDF, pick the stage, get a scored report.</p>
+
+    <div class="upload-zone" id="dropzone">
+      <div class="upload-icon">&#128196;</div>
+      <p class="upload-text"><strong>Drop a PDF here</strong> or click to browse</p>
+      <p class="file-name" id="fileName"></p>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf" hidden>
+
+    <div class="stage-select">
+      <button class="stage-btn" data-stage="0">Pre-Seed</button>
+      <button class="stage-btn active" data-stage="1">Seed</button>
+      <button class="stage-btn" data-stage="2">Series A+</button>
+    </div>
+
+    <button class="analyze-btn" id="analyzeBtn" disabled>Analyze Deck</button>
+    <p class="note">First analysis is free. No signup needed.</p>
+
+    <div class="status" id="status"></div>
+    <div class="progress" id="progress" style="display:none">
+      <div class="progress-bar"><div class="progress-fill"></div></div>
+    </div>
+
+    <a href="/" class="back-link">&larr; Back to Venture Scale</a>
   </div>
+
+  <script>
+    let selectedFile = null;
+    let selectedStage = 1;
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const status = document.getElementById('status');
+    const progress = document.getElementById('progress');
+
+    // File selection
+    dropzone.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => { if (e.target.files[0]) setFile(e.target.files[0]); };
+    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
+    dropzone.ondragleave = () => dropzone.classList.remove('dragover');
+    dropzone.ondrop = (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const f = e.dataTransfer.files[0];
+      if (f && f.type === 'application/pdf') setFile(f);
+      else { status.textContent = 'Please drop a PDF file.'; status.classList.add('error'); }
+    };
+
+    function setFile(f) {
+      selectedFile = f;
+      fileName.textContent = f.name;
+      dropzone.classList.add('has-file');
+      analyzeBtn.disabled = false;
+      status.textContent = '';
+      status.classList.remove('error');
+    }
+
+    // Stage selection
+    document.querySelectorAll('.stage-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.stage-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedStage = parseInt(btn.dataset.stage);
+      };
+    });
+
+    // Analyze
+    analyzeBtn.onclick = async () => {
+      if (!selectedFile) return;
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = 'Analyzing...';
+      status.textContent = 'Sending deck to AI for analysis. This takes about 60 seconds.';
+      status.classList.remove('error');
+      progress.style.display = 'block';
+
+      const formData = new FormData();
+      formData.append('deck', selectedFile);
+      formData.append('stage', selectedStage.toString());
+
+      try {
+        const res = await fetch('/api/analysis/create', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (data.requiresAuth) {
+            status.innerHTML = 'Sign up for 50 free analyses. <a href="/#signup" style="color:#d4a72c">Get started</a>';
+          } else {
+            status.textContent = data.error || 'Analysis failed. Please try again.';
+            status.classList.add('error');
+          }
+          analyzeBtn.disabled = false;
+          analyzeBtn.textContent = 'Analyze Deck';
+          progress.style.display = 'none';
+          return;
+        }
+
+        // Success — redirect to report
+        status.textContent = 'Analysis complete! Redirecting to your report...';
+        window.location.href = data.url;
+      } catch (err) {
+        status.textContent = 'Something went wrong. Please try again.';
+        status.classList.add('error');
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Analyze Deck';
+        progress.style.display = 'none';
+      }
+    };
+  </script>
 </body>
 </html>`);
 });
 
-// Report page — view a completed analysis
+// Report page — serve generated HTML from R2
 app.get('/report/:id', async (c) => {
   const id = c.req.param('id');
-  // TODO [productionize]: Fetch analysis from D1, render the HTML report
-  // 1. Look up analysis by ID in D1
-  // 2. Fetch the generated HTML from R2
-  // 3. Return it as HTML response
-  // 4. Track 'share' event if accessed by non-owner
-  return c.text(`Report ${id} — coming soon`, 404);
+
+  // Validate UUID format to prevent path traversal
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return c.text('Invalid report ID', 400);
+  }
+
+  const obj = await c.env.STORAGE.get(`reports/${id}.html`);
+  if (!obj) return c.text('Report not found', 404);
+
+  const html = await obj.text();
+  return c.html(html);
 });
 
 // Changelog
@@ -86,6 +208,12 @@ app.get('/changelog', (c) => {
   <!-- Add new entries at the top. Format: <h2>[DATE] — [Title]</h2><ul><li>[Change]</li></ul> -->
   <div class="container">
     <h1>Changelog</h1>
+    <h2>2026-03-29 — Core Analysis</h2>
+    <ul>
+      <li>Upload a pitch deck PDF and get a scored analysis</li>
+      <li>45-question checklist with stage-gating</li>
+      <li>Interactive HTML reports with shareable URLs</li>
+    </ul>
     <h2>2026-03-29 — Launch</h2>
     <ul>
       <li>Landing page with sample Airbnb analysis</li>
