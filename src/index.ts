@@ -46,10 +46,12 @@ app.get('/app', (c) => {
     .analyze-btn:disabled{opacity:0.4;cursor:not-allowed}
     .status{margin-top:24px;font-size:0.875rem;color:var(--text-muted)}
     .status.error{color:#f87171}
-    .progress{margin-top:16px}
-    .progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-    .progress-fill{height:100%;background:var(--accent);width:0%;transition:width 0.3s;animation:loading 2s ease-in-out infinite}
-    @keyframes loading{0%{width:0%}50%{width:70%}100%{width:100%}}
+    .wait-experience{margin-top:24px;padding:24px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+    .timer{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;color:var(--accent);margin-bottom:16px}
+    .progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:16px}
+    .progress-fill{height:100%;background:var(--accent);width:0%;transition:width 1s linear}
+    .wait-detail{font-size:0.8125rem;color:var(--text-muted);line-height:1.6;min-height:40px;transition:opacity 0.3s}
+    .wait-detail .step-label{color:var(--text);font-weight:500}
     .back-link{display:inline-block;margin-top:24px;font-size:0.8125rem;color:var(--text-muted);text-decoration:none}
     .back-link:hover{color:var(--accent)}
     .note{font-size:0.75rem;color:var(--text-muted);margin-top:12px}
@@ -77,8 +79,10 @@ app.get('/app', (c) => {
     <p class="note">First analysis is free. No signup needed.</p>
 
     <div class="status" id="status"></div>
-    <div class="progress" id="progress" style="display:none">
-      <div class="progress-bar"><div class="progress-fill"></div></div>
+    <div class="wait-experience" id="waitExperience" style="display:none">
+      <div class="timer" id="timer">0:00</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="wait-detail" id="waitDetail"></div>
     </div>
 
     <a href="/" class="back-link">&larr; Back to Venture Scale</a>
@@ -125,14 +129,91 @@ app.get('/app', (c) => {
       };
     });
 
+    // Notifications
+    let canNotify = false;
+    function requestNotifications() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(p => { canNotify = p === 'granted'; });
+      } else if ('Notification' in window && Notification.permission === 'granted') {
+        canNotify = true;
+      }
+    }
+
+    function sendNotification(title, body) {
+      if (canNotify && document.hidden) {
+        new Notification(title, { body, icon: '/favicon.ico' });
+      }
+    }
+
+    // Wait experience
+    const waitSteps = [
+      { at: 0,  text: '<span class="step-label">Uploading deck...</span>' },
+      { at: 3,  text: '<span class="step-label">Reading slides...</span> Extracting text and visuals from every page.' },
+      { at: 8,  text: '<span class="step-label">Evaluating team...</span> 14 questions on experience, skills, character, and completeness.' },
+      { at: 20, text: '<span class="step-label">Analyzing market & solution...</span> TAM, timing, product-market fit, pricing.' },
+      { at: 35, text: '<span class="step-label">Stress-testing business model...</span> Revenue projections, concentration risk, unit economics.' },
+      { at: 50, text: '<span class="step-label">Assessing defensibility...</span> USP, competition, moats, exit potential.' },
+      { at: 65, text: '<span class="step-label">Identifying quick wins...</span> What the deck could surface better with simple edits.' },
+      { at: 80, text: '<span class="step-label">Compiling report...</span> Scoring all categories and generating recommendations.' },
+      { at: 95, text: '<span class="step-label">Almost done...</span> Finalizing your interactive report.' },
+    ];
+
+    let timerInterval = null;
+    let startTime = 0;
+
+    function startTimer() {
+      startTime = Date.now();
+      const timerEl = document.getElementById('timer');
+      const progressFill = document.getElementById('progressFill');
+      const waitDetail = document.getElementById('waitDetail');
+      let lastStepIdx = -1;
+
+      timerInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        timerEl.textContent = mins + ':' + secs.toString().padStart(2, '0');
+
+        // Progress bar — estimate ~90s total, cap at 95%
+        const pct = Math.min(95, (elapsed / 90) * 100);
+        progressFill.style.width = pct + '%';
+
+        // Update step text
+        for (let i = waitSteps.length - 1; i >= 0; i--) {
+          if (elapsed >= waitSteps[i].at && i !== lastStepIdx) {
+            waitDetail.innerHTML = waitSteps[i].text;
+            lastStepIdx = i;
+            break;
+          }
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+    }
+
     // Analyze
     analyzeBtn.onclick = async () => {
       if (!selectedFile) return;
+
+      // Request notification permission on first analyze
+      requestNotifications();
+
       analyzeBtn.disabled = true;
       analyzeBtn.textContent = 'Analyzing...';
-      status.textContent = 'Sending deck to AI for analysis. This takes about 60 seconds.';
+      status.textContent = '';
       status.classList.remove('error');
-      progress.style.display = 'block';
+
+      // Show wait experience
+      const waitEl = document.getElementById('waitExperience');
+      waitEl.style.display = 'block';
+      startTimer();
+
+      // Hide upload UI
+      dropzone.style.display = 'none';
+      document.querySelector('.stage-select').style.display = 'none';
+      document.querySelector('.note').style.display = 'none';
 
       const formData = new FormData();
       formData.append('deck', selectedFile);
@@ -141,8 +222,14 @@ app.get('/app', (c) => {
       try {
         const res = await fetch('/api/analysis/create', { method: 'POST', body: formData });
         const data = await res.json();
+        stopTimer();
 
         if (!res.ok) {
+          waitEl.style.display = 'none';
+          dropzone.style.display = '';
+          document.querySelector('.stage-select').style.display = '';
+          document.querySelector('.note').style.display = '';
+
           if (data.requiresAuth) {
             status.innerHTML = 'Sign up for 50 free analyses. <a href="/#signup" style="color:#d4a72c">Get started</a>';
           } else {
@@ -151,19 +238,28 @@ app.get('/app', (c) => {
           }
           analyzeBtn.disabled = false;
           analyzeBtn.textContent = 'Analyze Deck';
-          progress.style.display = 'none';
           return;
         }
 
-        // Success — redirect to report
-        status.textContent = 'Analysis complete! Redirecting to your report...';
-        window.location.href = data.url;
+        // Success
+        document.getElementById('progressFill').style.width = '100%';
+        document.getElementById('waitDetail').innerHTML = '<span class="step-label">Done!</span> Your report is ready.';
+        status.textContent = 'Redirecting to your report...';
+
+        // Notify if tab is in background
+        sendNotification('Venture Scale', 'Your deck analysis is ready! ' + (data.company || ''));
+
+        setTimeout(() => { window.location.href = data.url; }, 800);
       } catch (err) {
+        stopTimer();
+        document.getElementById('waitExperience').style.display = 'none';
+        dropzone.style.display = '';
+        document.querySelector('.stage-select').style.display = '';
+        document.querySelector('.note').style.display = '';
         status.textContent = 'Something went wrong. Please try again.';
         status.classList.add('error');
         analyzeBtn.disabled = false;
         analyzeBtn.textContent = 'Analyze Deck';
-        progress.style.display = 'none';
       }
     };
   </script>
