@@ -368,7 +368,8 @@ function setTheme(t) {
   localStorage.setItem('vs-demo-theme', t);
 }
 toggle.onclick = () => setTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-setTheme(localStorage.getItem('vs-demo-theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+const paramTheme = new URLSearchParams(window.location.search).get('theme');
+setTheme(paramTheme || localStorage.getItem('vs-demo-theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
 
 function isActive(s) { return s <= currentStage; }
 
