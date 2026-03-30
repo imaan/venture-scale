@@ -39,5 +39,29 @@ Signup (email via magic link) gates the second analysis, not the first.
 - Go criteria: 5+ repeat users, feature requests for batch upload, 2+ new VC relationships opened.
 - Comprehensive GTM research available at `gtm-research/` — synthesis, competitive landscape, distribution channels, business analysis, and validation plan.
 
+## Learnings (2026-03-29 build session)
+
+**Time spent:** ~5.5 hours total. ~3 hours productive build, ~2.5 hours infrastructure debugging.
+
+**What went well:**
+- Landing page as embedded product demo (not marketing sections) — validated immediately, user loved it
+- Using a real recognizable deck (Airbnb) as the sample analysis made the demo feel credible
+- The `/venture-scale` Claude Code skill already had the full checklist prompt — porting it to an API was straightforward
+- Anthropic Files API + streaming solved both the upload size and idle timeout problems cleanly
+
+**What was hard / wasted time:**
+- **Wrong model ID (~45 min):** Used `claude-sonnet-4-20250514` which doesn't exist on this API key. Silent 404, no error logging. Should have tested the API call in isolation BEFORE building the full pipeline.
+- **Cloudflare Workers timeouts (~45 min):** `waitUntil` silently dies on free tier. Paid ($5/mo) didn't fix it either. CF Workers are fundamentally wrong for 60-90s AI API calls.
+- **Hono node-server timeout (~30 min):** Hono's `@hono/node-server` has a hardcoded ~3 minute connection timeout that can't be overridden. Switching to Express fixed it instantly.
+- **Node.js undici socket bug (~30 min):** Node v22's built-in fetch drops connections on large request bodies (known bug, anthropics/anthropic-sdk-typescript#712). Streaming the response fixed it.
+- **better-sqlite3 native rebuild (~20 min):** Switching Node versions requires rebuilding native modules. Minor but annoying.
+
+**Key takeaways for future productionize runs:**
+1. **Test the AI API call standalone first** — before building any infrastructure around it, verify the model exists, the key works, and a real payload succeeds. A 30-second script would have saved 45 minutes.
+2. **Don't use edge/serverless for long-running AI calls** — CF Workers, Vercel Edge, Deno Deploy all have timeout limits that conflict with 60-90s API calls. Use a real server (Railway, Fly.io, VPS).
+3. **Express over trendy frameworks for backend APIs** — Hono is great for edge, but Express has 15 years of battle-testing. No surprise timeouts, no compatibility issues.
+4. **Streaming prevents idle timeouts** — any AI API call that takes >30s should use streaming to keep the connection alive.
+5. **Node 23+ required** for large Anthropic API payloads due to the undici socket bug.
+
 ## Next Steps
-Run `/productionize:build` to generate the landing page and scaffold the app.
+Run `/productionize:launch` to set up distribution and invite users.
