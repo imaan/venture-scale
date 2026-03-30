@@ -2,6 +2,9 @@
 input/*.pdf
 input/*.PDF
 
+# Manual evaluations
+manual/
+
 # Processed decks
 done/*.pdf
 done/*.PDF
