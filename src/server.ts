@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { setupExpressErrorHandler } from 'posthog-node';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -7,6 +8,7 @@ import crypto from 'crypto';
 import db, { DATA_DIR } from './db';
 import { analyzeDeck } from './lib/analyze';
 import { generateReport } from './lib/report';
+import { posthog } from './lib/posthog';
 import { Resend } from 'resend';
 
 const app = express();
@@ -78,7 +80,7 @@ app.post('/api/analysis/create', upload.single('deck'), async (req, res) => {
 async function processAnalysis(id: string, pdfBase64: string, stage: number, userId: string | null) {
   try {
     console.log(`[${id}] Starting analysis...`);
-    const analysis = await analyzeDeck(pdfBase64, stage);
+    const analysis = await analyzeDeck(pdfBase64, stage, userId);
     console.log(`[${id}] Analysis complete, generating report...`);
     const reportHtml = generateReport(analysis);
 
@@ -222,9 +224,20 @@ app.get('/changelog', (_req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'changelog.html'));
 });
 
+// ── Error tracking (must be after all routes) ───────────
+if (posthog) {
+  setupExpressErrorHandler(posthog, app);
+}
+
 // ── Start ─────────────────────────────────────────────
 
 const server = app.listen(port, () => {
-  console.log(`Venture Scale running at http://localhost:${port}`);
+  console.log(`Venture Scale running at http://localhost:${port} (${process.env.NODE_ENV ?? 'development'})`);
 });
 server.setTimeout(10 * 60 * 1000);
+
+// Graceful shutdown — flush PostHog events
+process.on('SIGTERM', async () => {
+  if (posthog) await posthog.shutdown();
+  server.close(() => process.exit(0));
+});
