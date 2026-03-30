@@ -23,6 +23,9 @@ node_modules/
 .env
 .env.local
 
+# Claude Code session state
+.claude/.park-task-id
+
 # OS files
 .DS_Store
 Thumbs.db
