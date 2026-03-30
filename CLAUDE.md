@@ -2,6 +2,16 @@
 
 AI-powered pitch deck analyzer for VCs. Scores decks against a 45-question stage-gated investor checklist (Verified / Quick Win / Gap). Express + Node.js web app deployed on Railway.
 
+## Environments
+
+| Environment | Branch | Deploy | URL |
+|-------------|--------|--------|-----|
+| **Production** | `main` | Railway auto-deploy | `vc.imaan.co` |
+| **Staging** | `staging` | Railway auto-deploy | Railway staging URL |
+| **Local dev** | any | `npm run dev` | `localhost:8787` |
+
+**Promotion flow:** Feature branches → PR into `staging` → test → merge `staging` into `main`.
+
 ## Commands
 
 ```bash
@@ -12,8 +22,9 @@ npm run start             # Start production server
 # Type check
 npm run typecheck         # or: npx tsc --noEmit
 
-# Deploy
-git push origin main      # Railway auto-deploys from main
+# Deploy (both auto-deploy from their respective branches)
+git push origin staging   # Railway auto-deploys staging
+git push origin main      # Railway auto-deploys production
 
 # Secrets
 iscrt env push            # Push .env to encrypted store
@@ -27,7 +38,8 @@ src/
   server.ts             # Express app — all routes, auth, analysis, feedback, stats
   db.ts                 # SQLite database (better-sqlite3), auto-creates schema
   lib/
-    analyze.ts          # Claude API integration — Files API upload + streaming analysis
+    analyze.ts          # Vercel AI SDK + Anthropic — streamText with inline PDF
+    posthog.ts          # PostHog server-side client (production-only)
     report.ts           # HTML report generator (analysis JSON → interactive HTML)
     analytics.ts        # PostHog event definitions
 public/
@@ -55,9 +67,10 @@ Dockerfile              # Node 23 (required for undici fix)
 - **Database:** SQLite via better-sqlite3 (stored in `data/venture-scale.db`)
 - **Storage:** Local filesystem (`data/reports/` for generated HTML reports)
 - **Auth:** Magic link via Resend
-- **Analytics:** PostHog
-- **AI:** Anthropic Claude API (Sonnet 4) via Files API + streaming
-- **Deploy:** Railway (auto-deploys from main, persistent volume at `/app/data`)
+- **Analytics:** PostHog (production-only — `NODE_ENV=production` server, `vc.imaan.co` client)
+- **AI:** Vercel AI SDK (`ai` + `@ai-sdk/anthropic`) with PostHog LLM analytics via `@posthog/ai/vercel`
+- **Error tracking:** PostHog server-side (`posthog-node` with `setupExpressErrorHandler`)
+- **Deploy:** Railway (staging auto-deploys from `staging`, production auto-deploys from `main`, persistent volume at `/app/data`)
 - **Language:** TypeScript (via tsx)
 
 ## Key Decisions
@@ -66,14 +79,15 @@ Dockerfile              # Node 23 (required for undici fix)
 - Signup (magic link) gates subsequent analyses and gives 50 credits
 - Analysis is async: POST returns immediately, client polls `/api/analysis/:id/status`
 - Background processing via `setTimeout` (runs outside request handler)
-- Uses Anthropic Files API to upload PDFs (avoids base64-in-JSON size issues)
-- Uses streaming for the analysis call (prevents idle connection timeout on long analyses)
+- Uses Vercel AI SDK `streamText` with inline PDF (replaces direct Anthropic SDK + Files API)
+- PostHog LLM analytics auto-tracks tokens, cost, latency via `withTracing` wrapper
 - Reports are shareable via URL at `/report/:id`
 - The interactive HTML report template lives at `.claude/skills/venture-scale/template.html`
 - Research docs are in `research/` (GTM, competitive landscape, specs, plans)
 
 ## Conventions
 
+- **Branching:** Feature branches → PR into `staging` → merge `staging` to `main` to promote
 - Secrets go in `.env` and are pushed with `iscrt env push`
 - Railway env vars set via `railway variables --set "KEY=value"`
 - Local dev requires Node 23+ (`/opt/homebrew/Cellar/node/25.8.1_1/bin/node` on this machine)
@@ -96,5 +110,5 @@ Dockerfile              # Node 23 (required for undici fix)
 
 ## URLs
 
-- **Production:** https://venture-scale-production.up.railway.app
+- **Production:** https://vc.imaan.co
 - **GitHub:** https://github.com/imaan/venture-scale
