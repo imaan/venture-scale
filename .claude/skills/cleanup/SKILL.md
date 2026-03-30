@@ -75,7 +75,7 @@ git status --porcelain
 ```
 
 Watch for:
-- `.env` or `.dev.vars` (must be in `.gitignore`)
+- `.env` (must be in `.gitignore`)
 - `.DS_Store` files
 - PDF files in project root
 - `node_modules/` accidentally tracked

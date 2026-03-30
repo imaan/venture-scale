@@ -84,6 +84,12 @@ What we're building. Be specific about the approach.
 1. Step 1
 2. Step 2
 
+## Open Questions
+Things I'm unsure about or need input on.
+
+## Design Decisions
+Decisions made and why (reference patterns found in codebase).
+
 ## Acceptance Criteria
 - [ ] Criterion 1
 - [ ] Criterion 2
@@ -110,16 +116,19 @@ _Filled in after implementation._
 
 ---
 
-### 4. Pre-Implementation Summary
+### 4. Design Discussion
 
-Before writing any code, output a brief summary:
-- Files to create or modify
-- Approach and key decisions
-- Assumptions being made
-- Estimated scope (small / medium / large)
+Before writing any code, research the relevant parts of the codebase and present a ~200 line alignment doc:
 
-**Interactive:** Wait for the user to acknowledge or adjust before proceeding.
-**Autonomous:** Output the summary and continue immediately.
+- **Current state:** What the relevant code looks like today. File paths, patterns, data flow.
+- **Patterns found:** Which existing patterns to follow (and which to avoid). Be specific — reference files and line numbers.
+- **Open questions:** Things you're unsure about. Surface these for the user to resolve.
+- **Proposed approach:** Files to create/modify, approach, key decisions, estimated scope (small / medium / large).
+
+**Stay objective during research** — report facts about how the code works today. Form opinions in the "Proposed approach" section, not while reading code.
+
+**Interactive:** Wait for the user to review, answer questions, and approve before proceeding.
+**Autonomous:** Output the design discussion and continue immediately. Flag open questions in the PR description.
 
 ---
 
@@ -152,7 +161,23 @@ If already in a worktree (detected via `git worktree list`), ask the user before
 
 ---
 
-### 6. Implement
+### 6. Validate External API Calls
+
+If the feature touches external APIs (Anthropic, Resend, PostHog, or any new service), **test the API call standalone** before building infrastructure around it:
+
+```bash
+# Write a minimal test script
+node -e "
+  // Test the exact call you'll be making
+  // Verify: correct model, correct parameters, expected response shape
+"
+```
+
+A 30-second test script prevents hours of debugging wrong model IDs, missing permissions, or incompatible calling patterns. Skip this step only if the feature doesn't touch any external APIs.
+
+---
+
+### 7. Implement
 
 Write the code. Follow these project conventions:
 
@@ -166,18 +191,20 @@ Write the code. Follow these project conventions:
 - **Static assets** go in `public/`
 - **PostHog** is production-only (`NODE_ENV=production` server-side, `hostname === 'vc.imaan.co'` client-side)
 
+**Implement in vertical slices, not horizontal layers.** Build one feature end-to-end (route → logic → UI → test) before starting the next, rather than writing all backend → all frontend → all tests. Verify at each slice checkpoint.
+
 **Scope creep handling:**
 - **Interactive:** Flag any scope expansion immediately. Discuss with the user whether to include it now or defer to a follow-up issue.
 - **Autonomous:** Note scope expansion in the PR description. Do not silently expand scope. If in doubt, defer to a follow-up issue.
 
 ---
 
-### 7. Push PR
+### 8. Push PR
 
 Stage specific files (don't use `git add .`), commit, push, and create the PR **targeting `staging`**:
 
 ```bash
-git add src/routes/newfile.ts src/index.ts
+git add src/server.ts src/lib/newfile.ts
 git commit -m "feat: description of change"
 git push -u origin feature/{description}
 gh pr create --base staging --title "feat: description" --body "$(cat <<'EOF'
@@ -197,7 +224,7 @@ Use conventional commit prefixes: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:
 
 ---
 
-### 8. Run Tests
+### 9. Run Tests
 
 No test suite detected — skip automated tests until tests are added.
 
@@ -230,7 +257,7 @@ curl -s http://localhost:8787/api/stats
 
 ---
 
-### 9. Manual Testing
+### 10. Manual Testing
 
 Start the dev server: `npm run dev`
 
@@ -245,7 +272,7 @@ Test these pages and flows:
 
 ---
 
-### 10. Merge to Staging & Test
+### 11. Merge to Staging & Test
 
 **Interactive:** Wait for the user to approve the PR before merging.
 **Autonomous:** Do NOT merge. Create the PR and stop. Always leave for human review.
@@ -266,7 +293,7 @@ git worktree remove ../venture-scale-feature/{description}
 
 ---
 
-### 11. Promote to Production
+### 12. Promote to Production
 
 Once verified on staging, merge `staging` into `main`:
 ```bash
@@ -286,7 +313,7 @@ curl -s https://vc.imaan.co/ | head -5
 
 ---
 
-### 12. Post-Merge
+### 13. Post-Merge
 
 - Create follow-up issues for anything deferred or discovered during implementation:
   ```bash
@@ -299,13 +326,13 @@ curl -s https://vc.imaan.co/ | head -5
 
 ---
 
-### 13. Update PRD
+### 14. Update PRD
 
 Go back to the PRD at `prds/{description}.md` and fill in the **"What Was Done"** section with what was actually implemented, any deviations from the plan, and lessons learned.
 
 ---
 
-### 14. Document Debt
+### 15. Document Debt
 
 If any technical debt was incurred during implementation (shortcuts, TODOs, known issues), document it:
 
@@ -332,7 +359,7 @@ What happens if this isn't addressed.
 
 ---
 
-### 15. Move PRD to Done
+### 16. Move PRD to Done
 
 After implementation is complete and merged:
 ```bash
@@ -341,7 +368,7 @@ mv prds/{description}.md prds/done/{description}.md
 
 ---
 
-### 16. Suggest Process Improvements
+### 17. Suggest Process Improvements
 
 After completing the workflow, note any friction or improvements. Examples:
 - "Test suite would have caught this — consider adding vitest"
