@@ -163,38 +163,43 @@ Include ALL 45 questions in every response, with the correct stage value for eac
 
 export async function analyzeDeck(
   pdfBase64: string,
-  stage: number
+  stage: number,
+  userId?: string | null,
 ): Promise<AnalysisResult> {
-  const Anthropic = (await import('@anthropic-ai/sdk')).default;
-  const { toFile } = await import('@anthropic-ai/sdk');
-  const client = new Anthropic({ timeout: 10 * 60 * 1000 }); // 10 minutes
+  const { streamText } = await import('ai');
+  const { createAnthropic } = await import('@ai-sdk/anthropic');
+  const { posthog } = await import('./posthog');
 
+  const anthropic = createAnthropic();
   const stageLabel = STAGE_LABELS[stage] ?? 'Seed';
-
-  // Upload PDF via Files API to avoid large base64 payloads
   const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-  const fileUpload = await client.beta.files.upload({
-    file: await toFile(pdfBuffer, 'deck.pdf', { type: 'application/pdf' }),
-    betas: ['files-api-2025-04-14'],
-  });
 
-  // Use streaming to prevent idle connection timeout on long analyses
-  let fullText = '';
-  const stream = client.beta.messages.stream({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 8192,
-    betas: ['files-api-2025-04-14'],
+  // Wrap model with PostHog tracing in production
+  let model: any = anthropic('claude-sonnet-4-20250514');
+  if (posthog) {
+    const { withTracing } = await import('@posthog/ai/vercel');
+    model = withTracing(model, posthog, {
+      posthogDistinctId: userId ?? 'anonymous',
+      posthogProperties: {
+        feature: 'deck-analysis',
+        stage: stageLabel,
+        pdf_size_bytes: pdfBuffer.length,
+      },
+    });
+  }
+
+  const result = streamText({
+    model,
     system: SYSTEM_PROMPT,
+    maxOutputTokens: 8192,
     messages: [
       {
         role: 'user',
         content: [
           {
-            type: 'document',
-            source: {
-              type: 'file',
-              file_id: fileUpload.id,
-            },
+            type: 'file',
+            data: pdfBuffer,
+            mediaType: 'application/pdf',
           },
           {
             type: 'text',
@@ -205,14 +210,12 @@ export async function analyzeDeck(
     ],
   });
 
-  for await (const event of stream) {
-    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-      fullText += event.delta.text;
-    }
-  }
+  const fullText = await result.text;
+  const usage = await result.usage;
+  console.log(`[analyze] Tokens: ${usage.inputTokens} in, ${usage.outputTokens} out`);
 
   if (!fullText) {
-    throw new Error('No text response from Anthropic API');
+    throw new Error('No text response from API');
   }
 
   // Parse JSON — strip any markdown fences if the model wraps them
@@ -221,7 +224,7 @@ export async function analyzeDeck(
     jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
   }
 
-  const result = JSON.parse(jsonStr) as AnalysisResult;
-  result.stage = stage;
-  return result;
+  const analysis = JSON.parse(jsonStr) as AnalysisResult;
+  analysis.stage = stage;
+  return analysis;
 }
